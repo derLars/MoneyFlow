@@ -2,7 +2,9 @@ import yaml
 import os
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import auth, purchases, ocr, payments
+from fastapi.staticfiles import StaticFiles
+from .routers import auth, purchases, ocr, payments, categories # ADDED categories
+from . import storage
 
 # Load configuration
 def load_config():
@@ -33,10 +35,16 @@ async def preflight_handler(request: Request, rest_of_path: str):
     response.headers["Access-Control-Allow-Headers"] = "*"
     return response
 
-app.include_router(auth.router)
-app.include_router(purchases.router)
-app.include_router(ocr.router)
-app.include_router(payments.router)
+app.include_router(auth.router, prefix="/api")
+app.include_router(purchases.router, prefix="/api")
+app.include_router(ocr.router, prefix="/api")
+app.include_router(payments.router, prefix="/api")
+app.include_router(categories.router, prefix="/api") # ADDED this line
+
+# Mount static files directory for receipt images
+# This needs to be done after routers, but before the catch-all for OPTIONS if that exists
+image_storage = storage.get_storage()
+app.mount("/api/purchases/images", StaticFiles(directory=image_storage.base_path), name="purchase_images")
 
 @app.get("/")
 async def health_check():

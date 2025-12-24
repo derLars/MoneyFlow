@@ -132,6 +132,17 @@ def create_purchase(db: Session, creator_user_id: int, payer_user_id: int,
 def get_purchase_by_id(db: Session, purchase_id: int):
     return db.query(models.Purchase).filter(models.Purchase.purchase_id == purchase_id).first()
 
+def create_receipt_image(db: Session, purchase_id: int, file_path: str, original_filename: str = None):
+    db_image = models.ReceiptImage(
+        purchase_id=purchase_id,
+        file_path=file_path,
+        original_filename=original_filename
+    )
+    db.add(db_image)
+    db.commit()
+    db.refresh(db_image)
+    return db_image
+
 def delete_purchase(db: Session, purchase_id: int):
     db_purchase = get_purchase_by_id(db, purchase_id)
     if db_purchase:
@@ -270,6 +281,9 @@ def create_category(db: Session, user_id: int, category_name: str, level: int):
 
 def get_all_categories(db: Session):
     return db.query(models.Category.category_name).distinct().all()
+
+def get_categories_by_user_and_level(db: Session, user_id: int, level: int):
+    return db.query(models.Category).filter(models.Category.user_id == user_id, models.Category.level == level).all()
 
 def get_analytics_data(db: Session, user_id: int, 
                        time_frame: str = "year", 

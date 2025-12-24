@@ -32,6 +32,7 @@ class Purchase(Base):
     creator = relationship("User", back_populates="created_purchases", foreign_keys=[creator_user_id])
     payer = relationship("User", back_populates="paid_purchases", foreign_keys=[payer_user_id])
     items = relationship("Item", back_populates="purchase", cascade="all, delete-orphan")
+    images = relationship("ReceiptImage", back_populates="purchase", cascade="all, delete-orphan")
     logs = relationship("PurchaseLog", back_populates="purchase", cascade="all, delete-orphan")
 
 class Item(Base):
@@ -100,6 +101,17 @@ class PasswordResetToken(Base):
     user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
     token_hash = Column(String(255), unique=True, nullable=False)
     expires_at = Column(DateTime, nullable=False)
+
+class ReceiptImage(Base):
+    __tablename__ = "receipt_images"
+    image_id = Column(Integer, primary_key=True, index=True)
+    purchase_id = Column(Integer, ForeignKey("purchases.purchase_id"), nullable=False)
+    file_path = Column(Text, nullable=False) # Local or relative path
+    original_filename = Column(String(255))
+    uploaded_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    # Relationships
+    purchase = relationship("Purchase", back_populates="images")
 
 class Payment(Base):
     __tablename__ = "payments"

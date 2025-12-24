@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, ArrowUpDown, Calendar, Receipt, ChevronRight, User } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, Calendar, Receipt, ChevronRight, User, Paperclip } from 'lucide-react';
 import api from '../api/axios';
 
 const PurchaseList = () => {
@@ -97,9 +97,14 @@ const PurchaseList = () => {
                   </div>
                 </div>
 
-                <h3 className="font-bold text-lg text-charcoal-gray dark:text-dark-text mb-1 line-clamp-1 group-hover:text-deep-blue dark:group-hover:text-dark-primary transition">
-                  {p.purchase_name}
-                </h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-bold text-lg text-charcoal-gray dark:text-dark-text line-clamp-1 group-hover:text-deep-blue dark:group-hover:text-dark-primary transition">
+                    {p.purchase_name}
+                  </h3>
+                  {p.images && p.images.length > 0 && (
+                    <Paperclip size={16} className="text-gray-400 dark:text-dark-text-secondary" title="Receipt images attached" />
+                  )}
+                </div>
 
                 <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-dark-text-secondary">
                   <span className="flex items-center gap-1">

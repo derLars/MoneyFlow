@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional, Any
+import json
+import os
 from pydantic import BaseModel, field_validator
 from datetime import date
-from .. import database, auth, models
+from .. import database, auth, models, storage
 from ..services import mapping_service
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
@@ -49,6 +52,22 @@ class ItemResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class ReceiptImageResponse(BaseModel):
+    image_id: int
+    file_path: str
+    original_filename: Optional[str] = None
+    url: Optional[str] = None
+
+    @field_validator("url", mode="before")
+    @classmethod
+    def generate_url(cls, v: Any, info: Any) -> str:
+        # This validator is a bit tricky for 'url' since it's not in the DB
+        # We'll populate it in the route
+        return v
+
+    class Config:
+        from_attributes = True
+
 class PurchaseResponse(BaseModel):
     purchase_id: int
     purchase_name: str
@@ -58,39 +77,71 @@ class PurchaseResponse(BaseModel):
     tax_is_added: bool
     discount_is_applied: bool
     items: List[ItemResponse]
+    images: List[ReceiptImageResponse] = []
     class Config:
         from_attributes = True
 
 @router.post("/", response_model=PurchaseResponse)
 async def create_purchase(
-    purchase_in: PurchaseCreate,
+    purchase_data: str = Form(...),
+    files: List[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # 1. Create the purchase record
-    db_purchase = database.create_purchase(
-        db,
-        creator_user_id=current_user.user_id,
-        payer_user_id=purchase_in.payer_user_id,
-        purchase_name=purchase_in.purchase_name,
-        purchase_date=purchase_in.purchase_date,
-        tax_is_added=purchase_in.tax_is_added,
-        discount_is_applied=purchase_in.discount_is_applied
-    )
+    print(f"DEBUG: Received purchase_data: {purchase_data}")
+    try:
+        data_dict = json.loads(purchase_data)
+        purchase_in = PurchaseCreate(**data_dict)
+    except Exception as e:
+        print(f"DEBUG: JSON Parsing Error: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid purchase data format: {str(e)}")
 
-    # 2. Add items to the purchase
-    for item_in in purchase_in.items:
-        db_item = database.add_item_to_purchase(
+    try:
+        # 1. Create the purchase record
+        db_purchase = database.create_purchase(
             db,
-            purchase_id=db_purchase.purchase_id,
-            original_name=item_in.original_name or item_in.friendly_name,
-            friendly_name=item_in.friendly_name,
-            quantity=item_in.quantity,
-            price=item_in.price,
-            category_level_1=item_in.category_level_1,
-            category_level_2=item_in.category_level_2,
-            category_level_3=item_in.category_level_3
+            creator_user_id=current_user.user_id,
+            payer_user_id=purchase_in.payer_user_id,
+            purchase_name=purchase_in.purchase_name,
+            purchase_date=purchase_in.purchase_date,
+            tax_is_added=purchase_in.tax_is_added,
+            discount_is_applied=purchase_in.discount_is_applied
         )
+
+        # 2. Handle files
+        if files:
+            print(f"DEBUG: Handling {len(files)} uploaded files")
+            store = storage.get_storage()
+            import uuid
+            for file in files:
+                if not file.filename:
+                    continue
+                ext = os.path.splitext(file.filename)[1]
+                unique_filename = f"{uuid.uuid4()}{ext}"
+                store.upload_fileobj(file.file, unique_filename)
+                database.create_receipt_image(
+                    db, 
+                    purchase_id=db_purchase.purchase_id,
+                    file_path=unique_filename,
+                original_filename=file.filename
+            )
+            print(f"DEBUG: Created ReceiptImage record for {unique_filename}")
+
+        # 3. Add items to the purchase
+        print(f"DEBUG: Starting to add {len(purchase_in.items)} items to purchase {db_purchase.purchase_id}")
+        for item_in in purchase_in.items:
+            db_item = database.add_item_to_purchase(
+                db,
+                purchase_id=db_purchase.purchase_id,
+                original_name=item_in.original_name or item_in.friendly_name,
+                friendly_name=item_in.friendly_name,
+                quantity=item_in.quantity,
+                price=item_in.price,
+                category_level_1=item_in.category_level_1,
+                category_level_2=item_in.category_level_2,
+                category_level_3=item_in.category_level_3
+            )
+            print(f"DEBUG: Added item {db_item.item_id} ({db_item.friendly_name}) to purchase")
 
         # Assign contributors
         for user_id in item_in.contributors:
@@ -104,10 +155,26 @@ async def create_purchase(
                 friendly_name=item_in.friendly_name,
                 user_id=current_user.user_id
             )
+            print(f"DEBUG: Updated friendly name mapping for {item_in.friendly_name}")
             
-    # Refresh to get items and contributors
+    except Exception as e:
+        print(f"DEBUG: Database Error during creation or item/mapping processing: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create purchase: {str(e)}")
+
+    print(f"DEBUG: Refreshing purchase {db_purchase.purchase_id} to load relationships")
+    # Refresh to get items, contributors and images
     db.refresh(db_purchase)
+    
+    print(f"DEBUG: Populating URLs for {len(db_purchase.images)} images")
+    
+    # Populate URLs
+    store = storage.get_storage()
+    for img in db_purchase.images:
+        img.url = store.get_file_url(img.file_path)
+        
     return db_purchase
+
 
 @router.put("/{purchase_id}", response_model=PurchaseResponse)
 async def update_purchase(
@@ -226,7 +293,15 @@ async def get_recent_purchases(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    return database.get_recent_purchases(db, user_id=current_user.user_id)
+    purchases = database.get_recent_purchases(db, user_id=current_user.user_id)
+    
+    # Populate URLs for images in each purchase
+    store = storage.get_storage()
+    for purchase in purchases:
+        for img in purchase.images:
+            img.url = store.get_file_url(img.file_path)
+    
+    return purchases
 
 @router.delete("/{purchase_id}")
 async def delete_purchase(
@@ -299,6 +374,11 @@ async def get_purchase(
     
     if not is_authorized:
         raise HTTPException(status_code=403, detail="Not authorized to view this purchase")
+    
+    # Populate URLs for images
+    store = storage.get_storage()
+    for img in db_purchase.images:
+        img.url = store.get_file_url(img.file_path)
         
     return db_purchase
 
@@ -317,12 +397,20 @@ async def list_purchases(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    return database.get_purchases_for_user(
+    purchases = database.get_purchases_for_user(
         db, 
         user_id=current_user.user_id, 
         search=search, 
         sort_by=sort_by
     )
+    
+    # Populate URLs for images in each purchase
+    store = storage.get_storage()
+    for purchase in purchases:
+        for img in purchase.images:
+            img.url = store.get_file_url(img.file_path)
+    
+    return purchases
 
 @router.get("/stats/analytics")
 async def get_stats(
