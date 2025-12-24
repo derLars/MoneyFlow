@@ -1,0 +1,25 @@
+# --- System Configuration --- 
+database: 
+  # 'sqlite' or 'postgresql' 
+  type: 'sqlite'  
+  # Path for SQLite file (used if type is 'sqlite') 
+  path: './data/database.db'  
+  # Connection string for PostgreSQL (used if type is 'postgresql') 
+  url: 'postgresql://user:password@db:5432/receiptdb'  
+ 
+storage: 
+  # Maximum size for a single image upload in megabytes. 
+  max_upload_size_mb: 25 
+ 
+  local: # Settings for when provider is 'local'  
+    image_path: './images'  
+ 
+# Credentials would be handled securely, e.g., via environment variables  
+#mistral_api_key: 'ENTER KEY HERE' 
+ 
+# Receipt extract: 
+# An external service that is called with the following parameter. Any relevant parameters 
+# would be added here. 
+receipt_extract:
+  threshold1: 100
+  threshold2: 200
