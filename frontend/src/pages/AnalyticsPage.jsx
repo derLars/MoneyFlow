@@ -126,30 +126,30 @@ const AnalyticsPage = () => {
       const isCumulative = viewType === 'cumulative';
       
       return (
-        <div className="bg-white p-3 border border-gray-100 shadow-xl rounded-lg min-w-[180px]">
-          <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">
+        <div className="bg-white dark:bg-dark-surface p-3 border border-gray-100 dark:border-dark-border shadow-xl rounded-lg min-w-[180px]">
+          <p className="text-[10px] uppercase font-bold text-gray-400 dark:text-dark-text-secondary mb-1">
             {new Date(data.date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
           </p>
           
           <div className="flex justify-between items-baseline gap-4">
-            <span className="text-xs text-gray-500">{isCumulative ? 'Total to date:' : 'Daily cost:'}</span>
-            <span className="text-xl font-bold text-deep-blue">{data.cost.toFixed(2)}</span>
+            <span className="text-xs text-gray-500 dark:text-dark-text-secondary">{isCumulative ? 'Total to date:' : 'Daily cost:'}</span>
+            <span className="text-xl font-bold text-deep-blue dark:text-dark-primary">{data.cost.toFixed(2)}</span>
           </div>
 
           {isCumulative && data.daily_cost !== undefined && (
             <div className="flex justify-between items-baseline gap-4 mt-1">
-              <span className="text-xs text-gray-500">Spend this day:</span>
-              <span className="text-sm font-bold text-charcoal-gray">{data.daily_cost.toFixed(2)}</span>
+              <span className="text-xs text-gray-500 dark:text-dark-text-secondary">Spend this day:</span>
+              <span className="text-sm font-bold text-charcoal-gray dark:text-dark-text">{data.daily_cost.toFixed(2)}</span>
             </div>
           )}
 
           {data.purchases && data.purchases.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-gray-100">
-              <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Purchases Breakdown</p>
+            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-dark-border">
+              <p className="text-[10px] uppercase font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Purchases Breakdown</p>
               {data.purchases.map((p, i) => (
                 <div key={i} className="flex justify-between items-center gap-4 text-xs">
-                  <span className="text-charcoal-gray truncate">• {p.name}</span>
-                  <span className="font-bold text-deep-blue">{p.cost.toFixed(2)}</span>
+                  <span className="text-charcoal-gray dark:text-dark-text truncate">• {p.name}</span>
+                  <span className="font-bold text-deep-blue dark:text-dark-primary">{p.cost.toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -164,24 +164,24 @@ const AnalyticsPage = () => {
     <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto py-6">
       {/* Sidebar Filters */}
       <aside className={`
-        fixed inset-0 z-50 bg-white lg:relative lg:bg-transparent lg:block lg:w-72 lg:inset-auto
+        fixed inset-0 z-50 bg-white dark:bg-dark-bg lg:relative lg:bg-transparent lg:block lg:w-72 lg:inset-auto
         ${showFilters ? 'block' : 'hidden'}
       `}>
         <div className="h-full flex flex-col p-6 lg:p-0">
           <div className="flex items-center justify-between lg:hidden mb-6">
-            <h2 className="text-xl font-bold">Filters</h2>
-            <button onClick={() => setShowFilters(false)}><X /></button>
+            <h2 className="text-xl font-bold text-charcoal-gray dark:text-dark-text">Filters</h2>
+            <button onClick={() => setShowFilters(false)} className="text-gray-400 dark:text-dark-text-secondary hover:text-charcoal-gray dark:hover:text-dark-text"><X /></button>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-            <div className="flex items-center gap-2 text-deep-blue font-bold mb-2">
+          <div className="bg-white dark:bg-dark-surface p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border space-y-6">
+            <div className="flex items-center gap-2 text-deep-blue dark:text-dark-primary font-bold mb-2">
               <Filter size={18} />
               <span>Filters</span>
             </div>
 
             {/* Time Filter */}
             <div>
-              <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-2">Time Frame</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-2">Time Frame</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'period', label: 'Period' },
@@ -194,7 +194,7 @@ const AnalyticsPage = () => {
                     onClick={() => setFilters({ ...filters, time_frame: tf.id })}
                     className={`
                       px-3 py-2 rounded-md text-xs font-bold capitalize transition
-                      ${filters.time_frame === tf.id ? 'bg-deep-blue text-white' : 'bg-light-gray text-gray-500 hover:bg-gray-200'}
+                      ${filters.time_frame === tf.id ? 'bg-deep-blue dark:bg-dark-primary text-white' : 'bg-light-gray dark:bg-dark-bg text-gray-500 dark:text-dark-text-secondary hover:bg-gray-200 dark:hover:bg-dark-surface-hover'}
                     `}
                   >
                     {tf.label}
@@ -206,13 +206,13 @@ const AnalyticsPage = () => {
                 <div className="mt-3 space-y-2">
                   <input
                     type="date"
-                    className="w-full p-2 bg-light-gray rounded-md text-xs outline-none"
+                    className="w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-xs outline-none text-charcoal-gray dark:text-dark-text"
                     value={filters.start_date}
                     onChange={(e) => setFilters({ ...filters, start_date: e.target.value })}
                   />
                   <input
                     type="date"
-                    className="w-full p-2 bg-light-gray rounded-md text-xs outline-none"
+                    className="w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-xs outline-none text-charcoal-gray dark:text-dark-text"
                     value={filters.end_date}
                     onChange={(e) => setFilters({ ...filters, end_date: e.target.value })}
                   />
@@ -222,7 +222,7 @@ const AnalyticsPage = () => {
               {filters.time_frame === 'month' && (
                 <input
                   type="month"
-                  className="mt-3 w-full p-2 bg-light-gray rounded-md text-sm outline-none"
+                  className="mt-3 w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none text-charcoal-gray dark:text-dark-text"
                   value={filters.start_date.substring(0, 7)}
                   onChange={(e) => setFilters({ ...filters, start_date: `${e.target.value}-01` })}
                 />
@@ -234,7 +234,7 @@ const AnalyticsPage = () => {
                   placeholder="YYYY"
                   min="2000"
                   max="2100"
-                  className="mt-3 w-full p-2 bg-light-gray rounded-md text-sm outline-none"
+                  className="mt-3 w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none text-charcoal-gray dark:text-dark-text"
                   value={filters.start_date.substring(0, 4)}
                   onChange={(e) => setFilters({ ...filters, start_date: `${e.target.value}-01-01` })}
                 />
@@ -244,13 +244,13 @@ const AnalyticsPage = () => {
             {/* Search */}
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-2">Search Title</label>
+                <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-2">Search Title</label>
                 <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-text-secondary" />
                   <input
                     type="text"
                     placeholder="Purchase name..."
-                    className="w-full pl-9 pr-3 py-2 bg-light-gray rounded-md text-sm outline-none focus:ring-1 focus:ring-deep-blue"
+                    className="w-full pl-9 pr-3 py-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary text-charcoal-gray dark:text-dark-text"
                     value={filters.search}
                     onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                   />
@@ -258,13 +258,13 @@ const AnalyticsPage = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-2">Search Items</label>
+                <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-2">Search Items</label>
                 <div className="relative">
-                  <ShoppingBag size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <ShoppingBag size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-text-secondary" />
                   <input
                     type="text"
                     placeholder="Item name (e.g. Milk)..."
-                    className="w-full pl-9 pr-3 py-2 bg-light-gray rounded-md text-sm outline-none focus:ring-1 focus:ring-deep-blue"
+                    className="w-full pl-9 pr-3 py-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary text-charcoal-gray dark:text-dark-text"
                     value={filters.item_search}
                     onChange={(e) => setFilters({ ...filters, item_search: e.target.value })}
                   />
@@ -274,25 +274,25 @@ const AnalyticsPage = () => {
 
             {/* Categories */}
             <div className="space-y-3">
-              <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1">Categories</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Categories</label>
               <input
                 type="text"
                 placeholder="Category 1"
-                className="w-full p-2 bg-light-gray rounded-md text-sm outline-none"
+                className="w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none text-charcoal-gray dark:text-dark-text"
                 value={filters.cat1}
                 onChange={(e) => setFilters({ ...filters, cat1: e.target.value })}
               />
               <input
                 type="text"
                 placeholder="Category 2"
-                className="w-full p-2 bg-light-gray rounded-md text-sm outline-none"
+                className="w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none text-charcoal-gray dark:text-dark-text"
                 value={filters.cat2}
                 onChange={(e) => setFilters({ ...filters, cat2: e.target.value })}
               />
               <input
                 type="text"
                 placeholder="Category 3"
-                className="w-full p-2 bg-light-gray rounded-md text-sm outline-none"
+                className="w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none text-charcoal-gray dark:text-dark-text"
                 value={filters.cat3}
                 onChange={(e) => setFilters({ ...filters, cat3: e.target.value })}
               />
@@ -301,7 +301,7 @@ const AnalyticsPage = () => {
             <button
               onClick={handleAnalyze}
               disabled={loading}
-              className="w-full py-3 bg-deep-blue text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition active:scale-95 disabled:opacity-50"
+              className="w-full py-3 bg-deep-blue dark:bg-dark-primary text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition active:scale-95 disabled:opacity-50"
             >
               {loading ? 'Analyzing...' : 'Analyze'}
             </button>
@@ -312,28 +312,28 @@ const AnalyticsPage = () => {
       {/* Main Content */}
       <main className="flex-grow space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-3xl font-bold text-charcoal-gray flex items-center gap-3">
-            <LayoutDashboard className="text-deep-blue" size={32} />
+          <h1 className="text-3xl font-bold text-charcoal-gray dark:text-dark-text flex items-center gap-3">
+            <LayoutDashboard className="text-deep-blue dark:text-dark-primary" size={32} />
             Analytics
           </h1>
           
           <div className="flex items-center gap-3">
-            <div className="bg-white border border-gray-200 rounded-lg p-1 flex">
+            <div className="bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-lg p-1 flex">
               <button
                 onClick={() => setViewType('cumulative')}
-                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'cumulative' ? 'bg-deep-blue text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'cumulative' ? 'bg-deep-blue dark:bg-dark-primary text-white shadow-sm' : 'text-gray-500 dark:text-dark-text-secondary hover:bg-gray-50 dark:hover:bg-dark-surface-hover'}`}
               >
                 Cumulative
               </button>
               <button
                 onClick={() => setViewType('individual')}
-                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'individual' ? 'bg-deep-blue text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'individual' ? 'bg-deep-blue dark:bg-dark-primary text-white shadow-sm' : 'text-gray-500 dark:text-dark-text-secondary hover:bg-gray-50 dark:hover:bg-dark-surface-hover'}`}
               >
                 Individual
               </button>
               <button
                 onClick={() => setViewType('sankey')}
-                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'sankey' ? 'bg-deep-blue text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'sankey' ? 'bg-deep-blue dark:bg-dark-primary text-white shadow-sm' : 'text-gray-500 dark:text-dark-text-secondary hover:bg-gray-50 dark:hover:bg-dark-surface-hover'}`}
               >
                 Flow
               </button>
@@ -341,7 +341,7 @@ const AnalyticsPage = () => {
 
             <button 
               onClick={() => setShowFilters(true)}
-              className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold"
+              className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-lg text-sm font-bold text-charcoal-gray dark:text-dark-text"
             >
               <Filter size={16} />
               Filters
@@ -351,48 +351,48 @@ const AnalyticsPage = () => {
 
         {/* KPI Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-deep-blue">
+          <div className="bg-white dark:bg-dark-surface p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-50 dark:bg-dark-primary/20 rounded-xl flex items-center justify-center text-deep-blue dark:text-dark-primary">
               <TrendingUp size={24} />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400">Total Spending</p>
-              <p className="text-2xl font-bold text-charcoal-gray">{stats.summary.total_spending.toFixed(2)}</p>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary">Total Spending</p>
+              <p className="text-2xl font-bold text-charcoal-gray dark:text-dark-text">{stats.summary.total_spending.toFixed(2)}</p>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-vibrant-green">
+          <div className="bg-white dark:bg-dark-surface p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border flex items-center gap-4">
+            <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center text-vibrant-green dark:text-green-400">
               <ShoppingBag size={24} />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400">Purchases</p>
-              <p className="text-2xl font-bold text-charcoal-gray">{stats.summary.num_purchases}</p>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary">Purchases</p>
+              <p className="text-2xl font-bold text-charcoal-gray dark:text-dark-text">{stats.summary.num_purchases}</p>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600">
+          <div className="bg-white dark:bg-dark-surface p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border flex items-center gap-4">
+            <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400">
               <Calculator size={24} />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400">Avg. Cost</p>
-              <p className="text-2xl font-bold text-charcoal-gray">{stats.summary.avg_cost.toFixed(2)}</p>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary">Avg. Cost</p>
+              <p className="text-2xl font-bold text-charcoal-gray dark:text-dark-text">{stats.summary.avg_cost.toFixed(2)}</p>
             </div>
           </div>
         </div>
 
         {/* Chart Section */}
-        <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <section className="bg-white dark:bg-dark-surface p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold text-charcoal-gray">
+            <h2 className="text-xl font-bold text-charcoal-gray dark:text-dark-text">
               {viewType === 'cumulative' ? 'Cumulative Spending' : 'Purchase Distribution'}
             </h2>
-            <div className="flex items-center gap-2 px-3 py-1 bg-light-gray rounded-full text-xs font-bold text-gray-500">
+            <div className="flex items-center gap-2 px-3 py-1 bg-light-gray dark:bg-dark-bg rounded-full text-xs font-bold text-gray-500 dark:text-dark-text-secondary">
               {viewType === 'cumulative' ? (
-                <><TrendingUp size={14} className="text-deep-blue" /><span>Accumulated running total</span></>
+                <><TrendingUp size={14} className="text-deep-blue dark:text-dark-primary" /><span>Accumulated running total</span></>
               ) : (
-                <><BarChart3 size={14} className="text-deep-blue" /><span>Individual transactions</span></>
+                <><BarChart3 size={14} className="text-deep-blue dark:text-dark-primary" /><span>Individual transactions</span></>
               )}
             </div>
           </div>

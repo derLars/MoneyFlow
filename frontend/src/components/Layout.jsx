@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { Menu, X, LogOut, Home, Receipt, LayoutDashboard, Settings, User as UserIcon, Users, ArrowRightLeft } from 'lucide-react';
 import useAuthStore from '../store/authStore';
+import MobileNav from './MobileNav';
 
 const Layout = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -26,7 +27,7 @@ const Layout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-light-gray font-sans flex flex-col">
+    <div className="min-h-screen bg-light-gray dark:bg-dark-bg font-sans flex flex-col pb-16 md:pb-0">
       {/* Persistent Navigation Bar (Header) */}
       <header className="bg-deep-blue text-white shadow-lg sticky top-0 z-50 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -99,6 +100,9 @@ const Layout = () => {
       <main className="flex-grow container mx-auto p-4 md:p-8">
         <Outlet />
       </main>
+      
+      {/* Mobile Bottom Navigation */}
+      <MobileNav />
     </div>
   );
 };

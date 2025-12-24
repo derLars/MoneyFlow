@@ -322,35 +322,35 @@ const PurchaseEditor = () => {
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-20">
       {/* Section 1: Purchase Details Header */}
-      <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-        <h2 className="text-xl font-bold text-deep-blue mb-6 flex items-center gap-2">
+      <section className="bg-white dark:bg-dark-surface p-6 rounded-lg shadow-sm border border-gray-100 dark:border-dark-border">
+        <h2 className="text-xl font-bold text-deep-blue dark:text-dark-primary mb-6 flex items-center gap-2">
           <Info size={20} />
           Purchase Details
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
-            <label className="block text-sm font-medium text-charcoal-gray mb-1">Purchase Name</label>
+            <label className="block text-sm font-medium text-charcoal-gray dark:text-dark-text mb-1">Purchase Name</label>
             <input
               type="text"
-              className="w-full p-2 bg-light-gray border-transparent rounded-md focus:ring-2 focus:ring-deep-blue outline-none"
+              className="w-full p-3 md:p-2 bg-light-gray dark:bg-dark-bg border-transparent rounded-md focus:ring-2 focus:ring-deep-blue dark:focus:ring-dark-primary outline-none text-charcoal-gray dark:text-dark-text"
               placeholder="e.g., Weekly Groceries"
               value={purchase.purchase_name}
               onChange={(e) => setPurchase({ ...purchase, purchase_name: e.target.value })}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-charcoal-gray mb-1">Purchase Date</label>
+            <label className="block text-sm font-medium text-charcoal-gray dark:text-dark-text mb-1">Purchase Date</label>
             <input
               type="date"
-              className="w-full p-2 bg-light-gray border-transparent rounded-md focus:ring-2 focus:ring-deep-blue outline-none"
+              className="w-full p-3 md:p-2 bg-light-gray dark:bg-dark-bg border-transparent rounded-md focus:ring-2 focus:ring-deep-blue dark:focus:ring-dark-primary outline-none text-charcoal-gray dark:text-dark-text"
               value={purchase.purchase_date}
               onChange={(e) => setPurchase({ ...purchase, purchase_date: e.target.value })}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-charcoal-gray mb-1">Payer</label>
+            <label className="block text-sm font-medium text-charcoal-gray dark:text-dark-text mb-1">Payer</label>
             <select
-              className="w-full p-2 bg-light-gray border-transparent rounded-md focus:ring-2 focus:ring-deep-blue outline-none"
+              className="w-full p-3 md:p-2 bg-light-gray dark:bg-dark-bg border-transparent rounded-md focus:ring-2 focus:ring-deep-blue dark:focus:ring-dark-primary outline-none text-charcoal-gray dark:text-dark-text"
               value={purchase.payer_user_id}
               onChange={(e) => setPurchase({ ...purchase, payer_user_id: parseInt(e.target.value) })}
             >
@@ -365,15 +365,15 @@ const PurchaseEditor = () => {
         <div className="mt-6 flex gap-6">
           <label className="flex items-center gap-2 cursor-pointer group">
             <div onClick={() => setPurchase({...purchase, tax_is_added: !purchase.tax_is_added})}>
-              {purchase.tax_is_added ? <CheckSquare className="text-deep-blue" size={20} /> : <Square className="text-gray-400 group-hover:text-deep-blue" size={20} />}
+              {purchase.tax_is_added ? <CheckSquare className="text-deep-blue dark:text-dark-primary" size={20} /> : <Square className="text-gray-400 dark:text-dark-text-secondary group-hover:text-deep-blue dark:group-hover:text-dark-primary" size={20} />}
             </div>
-            <span className="text-sm font-medium text-charcoal-gray">Add Tax</span>
+            <span className="text-sm font-medium text-charcoal-gray dark:text-dark-text">Add Tax</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer group">
              <div onClick={() => setPurchase({...purchase, discount_is_applied: !purchase.discount_is_applied})}>
-              {purchase.discount_is_applied ? <CheckSquare className="text-deep-blue" size={20} /> : <Square className="text-gray-400 group-hover:text-deep-blue" size={20} />}
+              {purchase.discount_is_applied ? <CheckSquare className="text-deep-blue dark:text-dark-primary" size={20} /> : <Square className="text-gray-400 dark:text-dark-text-secondary group-hover:text-deep-blue dark:group-hover:text-dark-primary" size={20} />}
             </div>
-            <span className="text-sm font-medium text-charcoal-gray">Apply discounts</span>
+            <span className="text-sm font-medium text-charcoal-gray dark:text-dark-text">Apply discounts</span>
           </label>
         </div>
       </section>
@@ -381,13 +381,13 @@ const PurchaseEditor = () => {
       {/* Section 2: Interactive Item List */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-deep-blue flex items-center gap-2">
+          <h2 className="text-xl font-bold text-deep-blue dark:text-dark-primary flex items-center gap-2">
             <Receipt size={20} />
             Items
           </h2>
           <button
             onClick={addItem}
-            className="flex items-center gap-2 px-4 py-2 bg-deep-blue text-white rounded-md hover:opacity-90 transition text-sm font-bold shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-deep-blue dark:bg-dark-primary text-white rounded-md hover:opacity-90 transition text-sm font-bold shadow-sm min-h-touch"
           >
             <Plus size={18} />
             Add Item
