@@ -275,6 +275,7 @@ const PurchaseEditor = () => {
     discount_is_applied: false,
   });
 
+  const [globalContributors, setGlobalContributors] = useState(user?.user_id ? [user.user_id] : []);
   const [items, setItems] = useState([]);
   const [receiptImages, setReceiptImages] = useState([]);
   const [viewImage, setViewImage] = useState(null);
@@ -323,7 +324,7 @@ const PurchaseEditor = () => {
         category_level_1: item.category_level_1 || '',
         category_level_2: item.category_level_2 || '',
         category_level_3: item.category_level_3 || '',
-        contributors: [user.user_id],
+        contributors: globalContributors,
       }));
       
       const hasDiscount = mappedItems.some(i => (i.discount || 0) > 0);
@@ -349,7 +350,7 @@ const PurchaseEditor = () => {
         category_level_1: '',
         category_level_2: '',
         category_level_3: '',
-        contributors: [user.user_id],
+        contributors: globalContributors,
       }]);
       setPurchase(p => ({ ...p, payer_user_id: user.user_id }));
     }
@@ -369,10 +370,17 @@ const PurchaseEditor = () => {
         category_level_1: '',
         category_level_2: '',
         category_level_3: '',
-        contributors: [user.user_id],
+        contributors: globalContributors,
       },
       ...items,
     ]);
+  };
+
+  const applyGlobalContributors = () => {
+    setItems(items.map(item => ({
+      ...item,
+      contributors: globalContributors
+    })));
   };
 
   const deleteItem = (id) => {
@@ -629,7 +637,23 @@ const PurchaseEditor = () => {
                     ))}
                     </select>
                 </div>
-                <div className="flex gap-6 items-center pt-6">
+                <div>
+                    <label className="block text-sm font-medium text-charcoal-gray dark:text-dark-text mb-1 flex justify-between">
+                        Global Contributors
+                        <button 
+                            onClick={applyGlobalContributors}
+                            className="text-[10px] text-deep-blue dark:text-dark-primary hover:underline font-bold"
+                        >
+                            Apply to all current items
+                        </button>
+                    </label>
+                    <ContributorDropdown 
+                        allUsers={allUsers}
+                        selectedIds={globalContributors}
+                        onChange={setGlobalContributors}
+                    />
+                </div>
+                <div className="flex gap-6 items-center pt-6 md:col-span-3">
                     <label className="flex items-center gap-2 cursor-pointer group">
                         <div onClick={() => setPurchase({...purchase, tax_is_added: !purchase.tax_is_added})}>
                         {purchase.tax_is_added ? <CheckSquare className="text-deep-blue dark:text-dark-primary" size={20} /> : <Square className="text-gray-400 dark:text-dark-text-secondary group-hover:text-deep-blue dark:group-hover:text-dark-primary" size={20} />}
