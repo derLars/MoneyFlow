@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
-from fastapi.concurrency import run_in_threadpool
 from typing import List, Dict
 from ..services import ocr_service
 from .. import auth
@@ -12,23 +11,22 @@ async def upload_receipt_images(
     current_user = Depends(auth.get_current_user)
 ):
     """
-    Step 15: Accepts images, runs OCR pipeline, and then uses Mistral AI
-    to extract structured items and prices.
+    Uses Pixtral (Vision LLM) to analyze receipt images directly.
     """
-    combined_text = ""
-    for file in files:
-        text = await ocr_service.process_image_file(file)
-        combined_text += text + "\n"
-    
-    if not combined_text.strip():
-        raise HTTPException(status_code=400, detail="No text could be extracted from the images.")
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded")
 
-    # Call Mistral AI to structure the data
     try:
-        print(f"DEBUG: Combined text for analysis:\n{combined_text}")
-        structured_items = await run_in_threadpool(ocr_service.analyze_information, combined_text)
-        print(f"DEBUG: Structured items from Mistral: {structured_items}")
+        # Pass the files directly to the Vision service
+        structured_items = await ocr_service.process_receipts_with_pixtral(files)
+        print(f"DEBUG: Structured items from Pixtral: {structured_items}")
+        
+        if not structured_items:
+             # It might return empty list if nothing found or error caught inside service
+             # We can optionally raise 400 if strictly nothing found, or just return []
+             pass
+             
         return structured_items
     except Exception as e:
-        print(f"Mistral Analysis Error: {e}")
+        print(f"Vision Analysis Error: {e}")
         raise HTTPException(status_code=500, detail=f"AI Analysis failed: {str(e)}")

@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session
 from .. import models
 
 def add_item_to_purchase(db: Session, purchase_id: int, original_name: str, 
-                         friendly_name: str = None, quantity: int = 1, price: float = 0.0,
+                         friendly_name: str = None, quantity: int = 1, price: float = 0.0, 
+                         discount: float = 0.0, tax_rate: float = 0.0,
                          category_level_1: str = None, category_level_2: str = None, category_level_3: str = None):
     db_item = models.Item(
         purchase_id=purchase_id,
@@ -10,6 +11,8 @@ def add_item_to_purchase(db: Session, purchase_id: int, original_name: str,
         friendly_name=friendly_name,
         quantity=quantity,
         price=price,
+        discount=discount,
+        tax_rate=tax_rate,
         category_level_1=category_level_1,
         category_level_2=category_level_2,
         category_level_3=category_level_3

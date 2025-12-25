@@ -13,6 +13,8 @@ class UserResponse(BaseModel):
     user_id: int
     name: str
     administrator: bool
+    default_tax_rate: float
+    common_tax_rates: str
 
 class UserCreate(BaseModel):
     name: str
@@ -27,6 +29,10 @@ class PasswordChange(BaseModel):
 
 class NameChange(BaseModel):
     new_name: str
+
+class TaxSettingsUpdate(BaseModel):
+    default_tax_rate: float
+    common_tax_rates: str
 
 @router.post("/token")
 async def login_for_access_token(db: Session = Depends(database.get_db), form_data: OAuth2PasswordRequestForm = Depends()):
@@ -49,7 +55,9 @@ async def read_users_me(current_user: models.User = Depends(auth.get_current_use
     return {
         "user_id": current_user.user_id,
         "name": current_user.name,
-        "administrator": current_user.administrator
+        "administrator": current_user.administrator,
+        "default_tax_rate": float(current_user.default_tax_rate),
+        "common_tax_rates": current_user.common_tax_rates
     }
 
 @router.get("/users", response_model=List[UserResponse])
@@ -130,6 +138,22 @@ async def update_name(
     # Since the JWT is based on the username, the user will need to re-login 
     # to get a new valid token with the correct 'sub' claim.
     return {"status": "success", "message": "Name updated. please re-login."}
+
+@router.post("/tax-settings")
+async def update_tax_settings(
+    data: TaxSettingsUpdate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    success = user_repo.update_user_tax_settings(
+        db, 
+        user_id=current_user.user_id, 
+        default_tax_rate=data.default_tax_rate,
+        common_tax_rates=data.common_tax_rates
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"status": "success"}
 
 @router.post("/users", response_model=UserResponse)
 async def create_user(

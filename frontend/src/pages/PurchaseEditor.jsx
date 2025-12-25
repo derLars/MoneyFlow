@@ -4,6 +4,99 @@ import useAuthStore from '../store/authStore';
 import api, { getCategoriesByLevel, createCategory } from '../api/axios';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 
+const TaxRateDropdown = ({ commonRates, value, onChange, disabled }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isManual, setIsManual] = useState(false);
+  const [manualValue, setManualValue] = useState(value);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const rates = commonRates.length > 0 ? commonRates : ['0'];
+
+  if (isManual) {
+    return (
+      <div className="relative flex items-center">
+        <input
+          type="number"
+          step="0.01"
+          className="w-full p-2 bg-light-gray dark:bg-dark-bg rounded text-sm text-charcoal-gray dark:text-dark-text border border-deep-blue outline-none"
+          value={manualValue}
+          onChange={(e) => {
+            setManualValue(e.target.value);
+            onChange(parseFloat(e.target.value) || 0);
+          }}
+          autoFocus
+          onBlur={() => {
+            if (!commonRates.includes(manualValue.toString())) {
+                // Keep manual mode if value is unique
+            } else {
+                setIsManual(false);
+            }
+          }}
+        />
+        <button 
+            onClick={() => setIsManual(false)}
+            className="absolute right-2 text-gray-400 hover:text-charcoal-gray"
+        >
+            <X size={14} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-2 bg-light-gray dark:bg-dark-bg rounded text-sm text-charcoal-gray dark:text-dark-text border border-transparent focus:border-deep-blue dark:focus:border-dark-primary transition disabled:opacity-50"
+      >
+        <span className="truncate">{value}%</span>
+        <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-dark-surface rounded-lg shadow-xl border border-gray-100 dark:border-dark-border overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="max-h-48 overflow-y-auto py-1">
+            {rates.map(rate => (
+              <button
+                key={rate}
+                onClick={() => {
+                  onChange(parseFloat(rate));
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-dark-primary/20 transition ${
+                  parseFloat(value) === parseFloat(rate) ? 'bg-blue-50 dark:bg-dark-primary/10 font-bold text-deep-blue dark:text-dark-primary' : 'text-charcoal-gray dark:text-dark-text'
+                }`}
+              >
+                {rate}%
+              </button>
+            ))}
+            <button
+                onClick={() => {
+                  setIsManual(true);
+                  setIsOpen(false);
+                }}
+                className="w-full text-left px-4 py-2 text-sm italic text-gray-500 hover:bg-gray-50 dark:hover:bg-dark-bg transition border-t border-gray-50 dark:border-dark-border mt-1"
+            >
+                + Custom Rate...
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ContributorDropdown = ({ allUsers, selectedIds, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -225,19 +318,24 @@ const PurchaseEditor = () => {
         original_name: item.extracted_name || '',
         quantity: item.quantity || 1,
         price: item.price || 0,
+        discount: item.discount || 0,
+        tax_rate: item.tax_rate || user.default_tax_rate || 0,
         category_level_1: item.category_level_1 || '',
         category_level_2: item.category_level_2 || '',
         category_level_3: item.category_level_3 || '',
         contributors: [user.user_id],
       }));
       
+      const hasDiscount = mappedItems.some(i => (i.discount || 0) > 0);
+
       setItems(mappedItems);
       if (images) setReceiptImages(images);
       
       setPurchase(p => ({ 
         ...p, 
         payer_user_id: user.user_id,
-        purchase_name: `Scan ${new Date().toLocaleDateString()}`
+        purchase_name: `Scan ${new Date().toLocaleDateString()}`,
+        discount_is_applied: hasDiscount
       }));
     } else if (items.length === 0) {
       setItems([{
@@ -246,6 +344,8 @@ const PurchaseEditor = () => {
         original_name: '',
         quantity: 1,
         price: 0,
+        discount: 0,
+        tax_rate: user.default_tax_rate || 0,
         category_level_1: '',
         category_level_2: '',
         category_level_3: '',
@@ -264,6 +364,8 @@ const PurchaseEditor = () => {
         original_name: '',
         quantity: 1,
         price: 0,
+        discount: 0,
+        tax_rate: user.default_tax_rate || 0,
         category_level_1: '',
         category_level_2: '',
         category_level_3: '',
@@ -320,6 +422,8 @@ const PurchaseEditor = () => {
             original_name: item.original_name || '',
             quantity: item.quantity,
             price: item.price,
+            discount: item.discount || 0,
+            tax_rate: item.tax_rate || 0,
             category_level_1: item.category_level_1 || '',
             category_level_2: item.category_level_2 || '',
             category_level_3: item.category_level_3 || '',
@@ -403,6 +507,8 @@ const PurchaseEditor = () => {
           ...item,
           price: parseFloat(item.price) || 0,
           quantity: parseInt(item.quantity) || 1,
+          discount: parseFloat(item.discount) || 0,
+          tax_rate: parseFloat(item.tax_rate) || 0,
           contributors: item.contributors.map(c => parseInt(c)).filter(c => !isNaN(c))
         }))
       };
@@ -464,7 +570,10 @@ const PurchaseEditor = () => {
     const totals = {};
     items.forEach(item => {
       if (!item.contributors || item.contributors.length === 0) return;
-      const share = ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1)) / item.contributors.length;
+      const basePrice = (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1);
+      const withTax = basePrice * (1 + (parseFloat(item.tax_rate) || 0) / 100);
+      const totalItemPrice = withTax - (parseFloat(item.discount) || 0);
+      const share = totalItemPrice / item.contributors.length;
       item.contributors.forEach(userId => {
         totals[userId] = (totals[userId] || 0) + share;
       });
@@ -520,14 +629,32 @@ const PurchaseEditor = () => {
                     ))}
                     </select>
                 </div>
-                <div className="flex gap-6 items-end pb-2">
+                <div className="flex gap-6 items-center pt-6">
                     <label className="flex items-center gap-2 cursor-pointer group">
                         <div onClick={() => setPurchase({...purchase, tax_is_added: !purchase.tax_is_added})}>
                         {purchase.tax_is_added ? <CheckSquare className="text-deep-blue dark:text-dark-primary" size={20} /> : <Square className="text-gray-400 dark:text-dark-text-secondary group-hover:text-deep-blue dark:group-hover:text-dark-primary" size={20} />}
                         </div>
-                        <span className="text-sm font-medium text-charcoal-gray dark:text-dark-text">Add Tax</span>
+                        <span className="text-sm font-medium text-charcoal-gray dark:text-dark-text whitespace-nowrap">Add Tax</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer group">
+
+                    {purchase.tax_is_added && (
+                        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                            <span className="text-[10px] uppercase font-bold text-gray-400">Bulk Apply:</span>
+                            <div className="flex gap-1">
+                                {(user?.common_tax_rates || "0").split(',').map(rate => (
+                                    <button
+                                        key={rate}
+                                        onClick={() => setItems(items.map(i => ({ ...i, tax_rate: parseFloat(rate) })))}
+                                        className="px-2 py-1 bg-blue-50 dark:bg-dark-primary/10 text-deep-blue dark:text-dark-primary text-[10px] font-bold rounded border border-blue-100 dark:border-dark-primary/20 hover:bg-deep-blue hover:text-white transition"
+                                    >
+                                        {rate}%
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <label className="flex items-center gap-2 cursor-pointer group ml-4">
                         <div onClick={() => setPurchase({...purchase, discount_is_applied: !purchase.discount_is_applied})}>
                         {purchase.discount_is_applied ? <CheckSquare className="text-deep-blue dark:text-dark-primary" size={20} /> : <Square className="text-gray-400 dark:text-dark-text-secondary group-hover:text-deep-blue dark:group-hover:text-dark-primary" size={20} />}
                         </div>
@@ -618,10 +745,14 @@ const PurchaseEditor = () => {
                   </button>
                 </div>
 
-                {/* Middle Row 1: Qty, Price, Contributors */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Middle Row 1: Qty, Price, Tax, Discount, Contributors */}
+                <div className={`grid grid-cols-2 ${
+                    (purchase.discount_is_applied && purchase.tax_is_added) ? 'md:grid-cols-6' : 
+                    (purchase.discount_is_applied || purchase.tax_is_added) ? 'md:grid-cols-5' : 
+                    'md:grid-cols-4'
+                } gap-4`}>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Quantity</label>
+                    <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Qty</label>
                     <input
                       type="number"
                       className="w-full p-2 bg-light-gray dark:bg-dark-bg dark:text-dark-text rounded outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary"
@@ -639,6 +770,28 @@ const PurchaseEditor = () => {
                       onChange={(e) => updateItem(item.id, 'price', e.target.value)}
                     />
                   </div>
+                  {purchase.tax_is_added && (
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Tax</label>
+                      <TaxRateDropdown
+                        commonRates={(user?.common_tax_rates || "0,20").split(',')}
+                        value={item.tax_rate}
+                        onChange={(val) => updateItem(item.id, 'tax_rate', val)}
+                      />
+                    </div>
+                  )}
+                  {purchase.discount_is_applied && (
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Discount</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full p-2 bg-light-gray dark:bg-dark-bg dark:text-dark-text rounded outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary text-vibrant-green"
+                        value={item.discount}
+                        onChange={(e) => updateItem(item.id, 'discount', e.target.value)}
+                      />
+                    </div>
+                  )}
                   <div className="col-span-2">
                     <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Contributors</label>
                     <ContributorDropdown 
@@ -652,7 +805,10 @@ const PurchaseEditor = () => {
                 {/* Per-person Contribution Display */}
                 {(item.contributors?.length > 0) && (
                   <div className="text-[11px] font-bold text-deep-blue dark:text-dark-primary flex items-center gap-1 bg-blue-50/50 dark:bg-dark-primary/10 w-fit px-3 py-1 rounded-full">
-                    <span className="opacity-70">Share: {((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1) / item.contributors.length).toFixed(2)} per person</span>
+                    <span className="opacity-70">Share: {(
+                        ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1) * (1 + (parseFloat(item.tax_rate) || 0) / 100) - (parseFloat(item.discount) || 0)) 
+                        / item.contributors.length
+                    ).toFixed(2)} per person</span>
                   </div>
                 )}
 
@@ -699,7 +855,11 @@ const PurchaseEditor = () => {
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
             <div className="text-deep-blue dark:text-dark-primary font-bold">
-                Total Purchase: <span className="text-xl">{items.reduce((acc, item) => acc + (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 0), 0).toFixed(2)}</span>
+                Total Purchase: <span className="text-xl">{items.reduce((acc, item) => {
+                    const base = (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 0);
+                    const withTax = base * (1 + (parseFloat(item.tax_rate) || 0) / 100);
+                    return acc + withTax - (parseFloat(item.discount) || 0);
+                }, 0).toFixed(2)}</span>
             </div>
             
             {/* Contributor Breakdown */}

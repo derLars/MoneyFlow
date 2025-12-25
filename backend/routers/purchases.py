@@ -18,6 +18,8 @@ class ItemBase(BaseModel):
     original_name: Optional[str] = ""
     quantity: int = 1
     price: float
+    discount: float = 0.0
+    tax_rate: float = 0.0
     category_level_1: Optional[str] = ""
     category_level_2: Optional[str] = ""
     category_level_3: Optional[str] = ""
@@ -38,6 +40,8 @@ class ItemResponse(BaseModel):
     original_name: Optional[str] = ""
     quantity: int
     price: float
+    discount: float = 0.0
+    tax_rate: float = 0.0
     category_level_1: Optional[str] = ""
     category_level_2: Optional[str] = ""
     category_level_3: Optional[str] = ""
@@ -138,6 +142,8 @@ async def create_purchase(
                 friendly_name=item_in.friendly_name,
                 quantity=item_in.quantity,
                 price=item_in.price,
+                discount=item_in.discount,
+                tax_rate=item_in.tax_rate,
                 category_level_1=item_in.category_level_1,
                 category_level_2=item_in.category_level_2,
                 category_level_3=item_in.category_level_3
@@ -270,6 +276,8 @@ async def update_purchase(
             friendly_name=item_in.friendly_name,
             quantity=item_in.quantity,
             price=item_in.price,
+            discount=item_in.discount,
+            tax_rate=item_in.tax_rate,
             category_level_1=item_in.category_level_1,
             category_level_2=item_in.category_level_2,
             category_level_3=item_in.category_level_3

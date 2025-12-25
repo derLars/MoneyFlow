@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, 
   Lock, 
@@ -9,23 +9,38 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  Palette
+  Palette,
+  Percent,
+  Plus,
+  Trash2,
+  Info,
+  X
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import ThemeToggle from '../components/ThemeToggle';
 import api from '../api/axios';
 
 const SettingsPage = () => {
-  const { user, logout } = useAuthStore();
+  const { user, logout, checkAuth } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [nameLoading, setNameLoading] = useState(false);
+  const [taxLoading, setTaxLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [nameSuccess, setNameSuccess] = useState('');
   const [error, setError] = useState('');
   const [nameError, setNameError] = useState('');
+  const [taxError, setTaxError] = useState('');
+  const [taxSuccess, setTaxSuccess] = useState('');
   
   const [newName, setNewName] = useState(user?.name || '');
-  
+
+  // Tax Settings State
+  const [defaultTaxRate, setDefaultTaxRate] = useState(user?.default_tax_rate || 0);
+  const [commonRates, setCommonRates] = useState(
+    user?.common_tax_rates ? user.common_tax_rates.split(',').map(r => r.trim()).filter(r => r !== '') : []
+  );
+  const [newRate, setNewRate] = useState('');
+
   const [formData, setFormData] = useState({
     current_password: '',
     new_password: '',
@@ -95,6 +110,38 @@ const SettingsPage = () => {
     setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
+  const handleAddRate = () => {
+    if (!newRate || isNaN(newRate)) return;
+    const val = parseFloat(newRate).toString();
+    if (!commonRates.includes(val)) {
+      setCommonRates([...commonRates, val].sort((a, b) => parseFloat(a) - parseFloat(b)));
+    }
+    setNewRate('');
+  };
+
+  const handleRemoveRate = (rate) => {
+    setCommonRates(commonRates.filter(r => r !== rate));
+  };
+
+  const handleSaveTaxSettings = async () => {
+    setTaxLoading(true);
+    setTaxError('');
+    setTaxSuccess('');
+
+    try {
+      await api.post('/auth/tax-settings', {
+        default_tax_rate: parseFloat(defaultTaxRate),
+        common_tax_rates: commonRates.join(',')
+      });
+      setTaxSuccess('Tax settings saved successfully!');
+      await checkAuth(); // Refresh user data in store
+    } catch (err) {
+      setTaxError(err.response?.data?.detail || 'Failed to save tax settings');
+    } finally {
+      setTaxLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
       <div className="flex items-center gap-4 mb-2">
@@ -153,7 +200,94 @@ const SettingsPage = () => {
         </form>
       </section>
 
-      {/* Section 2: Appearance */}
+      {/* Section 2: Tax Configuration */}
+      <section className="bg-white dark:bg-dark-surface rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-dark-border">
+        <div className="flex items-center gap-3 mb-6">
+          <Percent className="text-deep-blue dark:text-dark-primary" size={20} />
+          <h2 className="text-xl font-bold text-charcoal-gray dark:text-dark-text">Tax Configuration</h2>
+        </div>
+
+        <div className="space-y-8">
+          {taxError && (
+            <div className="p-4 bg-alert-red/10 dark:bg-red-900/20 border border-alert-red/20 dark:border-red-500 rounded-2xl flex items-center gap-3 text-alert-red dark:text-red-400 text-sm font-medium">
+              <AlertCircle size={18} />
+              {taxError}
+            </div>
+          )}
+
+          {taxSuccess && (
+            <div className="p-4 bg-vibrant-green/10 dark:bg-green-900/20 border border-vibrant-green/20 dark:border-green-500 rounded-2xl flex items-center gap-3 text-vibrant-green dark:text-green-400 text-sm font-bold">
+              <CheckCircle2 size={18} />
+              {taxSuccess}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-charcoal-gray dark:text-dark-text flex items-center gap-2">
+                Default Tax Rate (%)
+                <Info size={14} className="text-gray-400" title="This rate will be applied by default to new items" />
+              </h3>
+              <input
+                type="number"
+                step="0.01"
+                className="w-full p-4 bg-light-gray dark:bg-dark-bg rounded-2xl outline-none focus:ring-2 focus:ring-deep-blue dark:focus:ring-dark-primary border-none text-sm text-charcoal-gray dark:text-dark-text"
+                value={defaultTaxRate}
+                onChange={(e) => setDefaultTaxRate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-charcoal-gray dark:text-dark-text">Common Tax Rates</h3>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {commonRates.map(rate => (
+                  <div key={rate} className="flex items-center gap-2 bg-blue-50 dark:bg-dark-primary/10 px-4 py-2 rounded-xl border border-blue-100 dark:border-dark-primary/20 group">
+                    <span className="text-sm font-bold text-deep-blue dark:text-dark-primary">{rate}%</span>
+                    <button 
+                        onClick={() => handleRemoveRate(rate)}
+                        className="text-gray-400 hover:text-alert-red transition"
+                    >
+                        <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                {commonRates.length === 0 && (
+                  <p className="text-xs text-gray-400 italic py-2">No common rates defined.</p>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  placeholder="Add rate (e.g. 8.875)"
+                  className="flex-grow p-3 bg-light-gray dark:bg-dark-bg rounded-xl outline-none text-sm text-charcoal-gray dark:text-dark-text"
+                  value={newRate}
+                  onChange={(e) => setNewRate(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddRate()}
+                />
+                <button
+                  onClick={handleAddRate}
+                  className="p-3 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-dark-border text-charcoal-gray dark:text-dark-text rounded-xl transition"
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-gray-50 dark:border-dark-border">
+            <button
+                onClick={handleSaveTaxSettings}
+                disabled={taxLoading}
+                className="w-full sm:w-auto px-12 py-4 bg-deep-blue dark:bg-dark-primary text-white rounded-2xl font-bold shadow-lg hover:opacity-90 transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 min-h-touch"
+            >
+                {taxLoading ? <Loader2 className="animate-spin" size={20} /> : 'Save Tax Settings'}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 3: Appearance */}
       <section className="bg-white dark:bg-dark-surface rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-dark-border">
         <div className="flex items-center gap-3 mb-6">
           <Palette className="text-deep-blue dark:text-dark-primary" size={20} />

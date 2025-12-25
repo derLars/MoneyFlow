@@ -9,6 +9,8 @@ class User(Base):
     name = Column(String(30), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     administrator = Column(Boolean, default=False)
+    default_tax_rate = Column(Numeric(5, 2), default=0.00)
+    common_tax_rates = Column(String(255), default="0,20") # Comma-separated list
 
     # Relationships
     created_purchases = relationship("Purchase", back_populates="creator", foreign_keys="[Purchase.creator_user_id]")

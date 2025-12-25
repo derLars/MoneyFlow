@@ -43,6 +43,16 @@ def update_user_name(db: Session, user_id: int, new_name: str):
         return True
     return False
 
+def update_user_tax_settings(db: Session, user_id: int, default_tax_rate: float, common_tax_rates: str):
+    user = get_user_by_id(db, user_id)
+    if user:
+        user.default_tax_rate = default_tax_rate
+        user.common_tax_rates = common_tax_rates
+        db.commit()
+        db.refresh(user)
+        return True
+    return False
+
 def delete_user(db: Session, user_id: int):
     user = get_user_by_id(db, user_id)
     if user:
