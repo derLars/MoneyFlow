@@ -71,46 +71,48 @@ def analyze_information(extracted_text: str) -> List[Dict]:
     model = "mistral-large-2411"
     client = Mistral(api_key=api_key)
 
-    system_message = "You are an expert extraction algorithm. The text is a shopping receipt. Only extract the purchased items including their price from the text. If you do not know the value of an attribute asked to extract, you may omit the attribute's value. ignore the total price. Only output the data with no further explanation or comment. use an empty string instead of null. split the items by a newline."
+    system_message = "You are an expert extraction algorithm. The text is a shopping receipt. Extract the purchased items and their prices. Output a strictly valid JSON object with a key 'items', which is a list of objects. Each object must have 'extracted_name' (string) and 'price' (number). Ignore the total price. If a value is unknown, use null. Do not output any markdown formatting."
     
     messages = [
         {'role': "system", 'content': system_message},
         {'role': "user", 'content': extracted_text}
     ]
 
-    response = client.chat.complete(model=model, messages=messages)
+    response = client.chat.complete(
+        model=model, 
+        messages=messages,
+        response_format={"type": "json_object"}
+    )
     raw_content = response.choices[0].message.content
 
-    # The spec says "split the items by a newline".
-    # Each line contains the extracted name and the price.
-    # e.g. "TORTELACCIO 96.00"
     items = []
     try:
-        lines = raw_content.strip().split("\n")
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            
-            # Use regex to find the price at the end of the line
-            # It matches a number (with optional decimal point) at the end of the line
-            match = re.search(r'(\d+(?:\.\d+)?)$', line)
-            if match:
-                price_str = match.group(1)
-                price = float(price_str)
-                # The name is everything before the price, stripped of whitespace
-                extracted_name = line[:match.start()].strip()
-            else:
-                price = 0.0
-                extracted_name = line
-            
-            if extracted_name:
-                items.append({"extracted_name": extracted_name, "price": price})
+        data = json.loads(raw_content)
+        items_data = data.get("items", [])
+        
+        for item in items_data:
+            name = item.get("extracted_name")
+            if name:
+                items.append({
+                    "extracted_name": str(name).strip(),
+                    "price": float(item.get("price") or 0.0)
+                })
                 
     except Exception as e:
-        print(f"Error parsing Mistral response: {e}")
-        # Final fallback
-        items = [{"extracted_name": raw_content, "price": 0.0}]
+        print(f"Error parsing Mistral response: {e}. Content: {raw_content}")
+        # Fallback to regex if JSON fails (legacy support)
+        try:
+            lines = raw_content.strip().split("\n")
+            for line in lines:
+                line = line.strip()
+                if not line: continue
+                match = re.search(r'(\d+(?:\.\d+)?)$', line)
+                if match:
+                    price = float(match.group(1))
+                    name = line[:match.start()].strip()
+                    if name: items.append({"extracted_name": name, "price": price})
+        except:
+            items = [{"extracted_name": raw_content[:100], "price": 0.0}]
 
     return items
 
