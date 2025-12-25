@@ -77,16 +77,16 @@ const ImageEditorModal = ({ image, onSave, onCancel }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
-      <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
-        <div className="p-4 border-b flex justify-between items-center">
-          <h3 className="text-xl font-bold">Edit Image</h3>
-          <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+      <div className="bg-white dark:bg-dark-surface rounded-lg w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-gray-200 dark:border-dark-border flex justify-between items-center">
+          <h3 className="text-xl font-bold text-charcoal-gray dark:text-dark-text">Edit Image</h3>
+          <button onClick={onCancel} className="text-gray-500 dark:text-dark-text-secondary hover:text-gray-700 dark:hover:text-dark-text">
             <X size={24} />
           </button>
         </div>
 
-        <div className="flex-1 relative bg-gray-200">
+        <div className="flex-1 relative bg-gray-200 dark:bg-dark-bg">
           <Cropper
             image={image.preview}
             crop={crop}
@@ -103,18 +103,18 @@ const ImageEditorModal = ({ image, onSave, onCancel }) => {
         <div className="p-6 space-y-4">
           <div className="flex flex-col space-y-2">
             <div className="flex justify-between items-center">
-              <label className="text-sm font-medium text-gray-700">Rotation: {rotation}°</label>
-              <div className="flex space-x-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-dark-text">Rotation: {rotation}°</label>
+              <div className="flex space-x-2 text-gray-600 dark:text-dark-text-secondary">
                 <button 
                   onClick={() => setRotation(r => (r - 90) % 360)}
-                  className="p-1 hover:bg-gray-100 rounded"
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-dark-bg rounded"
                   title="Rotate Left 90°"
                 >
                   <RotateCcw size={20} />
                 </button>
                 <button 
                   onClick={() => setRotation(r => (r + 90) % 360)}
-                  className="p-1 hover:bg-gray-100 rounded"
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-dark-bg rounded"
                   title="Rotate Right 90°"
                 >
                   <RotateCw size={20} />
@@ -128,12 +128,12 @@ const ImageEditorModal = ({ image, onSave, onCancel }) => {
               step="1"
               value={rotation}
               onChange={(e) => setRotation(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-deep-blue"
+              className="w-full h-2 bg-gray-200 dark:bg-dark-bg rounded-lg appearance-none cursor-pointer accent-deep-blue dark:accent-dark-primary"
             />
           </div>
 
           <div className="flex flex-col space-y-2">
-            <label className="text-sm font-medium text-gray-700">Zoom</label>
+            <label className="text-sm font-medium text-gray-700 dark:text-dark-text">Zoom</label>
             <input
               type="range"
               min="1"
@@ -141,20 +141,20 @@ const ImageEditorModal = ({ image, onSave, onCancel }) => {
               step="0.1"
               value={zoom}
               onChange={(e) => setZoom(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-deep-blue"
+              className="w-full h-2 bg-gray-200 dark:bg-dark-bg rounded-lg appearance-none cursor-pointer accent-deep-blue dark:accent-dark-primary"
             />
           </div>
 
-          <div className="flex justify-end space-x-4 pt-4 border-t">
+          <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200 dark:border-dark-border">
             <button
               onClick={onCancel}
-              className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              className="px-6 py-2 border border-gray-300 dark:border-dark-border text-charcoal-gray dark:text-dark-text rounded-md hover:bg-gray-50 dark:hover:bg-dark-bg transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-2 bg-deep-blue text-white rounded-md font-bold hover:opacity-90 transition-opacity flex items-center space-x-2"
+              className="px-6 py-2 bg-deep-blue dark:bg-dark-primary text-white rounded-md font-bold hover:opacity-90 transition-opacity flex items-center space-x-2"
             >
               <Check size={20} />
               <span>Apply Changes</span>
@@ -282,19 +282,19 @@ const ScanReceiptPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-3xl font-bold text-charcoal-gray mb-8">Scan Your Receipt</h1>
+      <h1 className="text-3xl font-bold text-charcoal-gray dark:text-dark-text mb-8">Scan Your Receipt</h1>
 
       {/* Step 1: Upload Area */}
       <div 
         onDragOver={onDragOver}
         onDrop={onDrop}
-        className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center bg-white hover:border-deep-blue transition-colors cursor-pointer"
+        className="border-2 border-dashed border-gray-300 dark:border-dark-border rounded-lg p-12 text-center bg-white dark:bg-dark-surface hover:border-deep-blue dark:hover:border-dark-primary transition-colors cursor-pointer"
         onClick={() => document.getElementById('fileInput').click()}
       >
-        <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <p className="text-lg text-charcoal-gray mb-2">Drag & drop receipt images here, or click to browse</p>
-        <p className="text-sm text-gray-500 mb-4">You can upload up to 5 images (JPEG, PNG, HEIC)</p>
-        <button className="bg-deep-blue text-white px-6 py-2 rounded-md font-bold hover:opacity-90 transition-opacity">
+        <Upload className="mx-auto h-12 w-12 text-gray-400 dark:text-dark-text-secondary mb-4" />
+        <p className="text-lg text-charcoal-gray dark:text-dark-text mb-2">Drag & drop receipt images here, or click to browse</p>
+        <p className="text-sm text-gray-500 dark:text-dark-text-secondary mb-4">You can upload up to 5 images (JPEG, PNG, HEIC)</p>
+        <button className="bg-deep-blue dark:bg-dark-primary text-white px-6 py-2 rounded-md font-bold hover:opacity-90 transition-opacity">
           Upload Images
         </button>
         <input 
@@ -316,12 +316,12 @@ const ScanReceiptPage = () => {
       {/* Step 2: Image Staging & Preparation */}
       {images.length > 0 && (
         <div className="mt-12">
-          <h2 className="text-2xl font-semibold text-charcoal-gray mb-6">Prepare Your Images</h2>
+          <h2 className="text-2xl font-semibold text-charcoal-gray dark:text-dark-text mb-6">Prepare Your Images</h2>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {images.map((img) => (
-              <div key={img.id} className="relative bg-white p-2 rounded-lg shadow-md border border-gray-200">
-                <div className="aspect-[3/4] overflow-hidden rounded-md bg-gray-100 flex items-center justify-center">
+              <div key={img.id} className="relative bg-white dark:bg-dark-surface p-2 rounded-lg shadow-md border border-gray-200 dark:border-dark-border">
+                <div className="aspect-[3/4] overflow-hidden rounded-md bg-gray-100 dark:bg-dark-bg flex items-center justify-center">
                   <img 
                     src={img.preview} 
                     alt="Receipt preview" 
@@ -339,7 +339,7 @@ const ScanReceiptPage = () => {
                 <div className="mt-3 flex justify-center">
                   <button 
                     onClick={() => setEditingImage(img)}
-                    className="flex items-center space-x-1 text-sm text-deep-blue hover:underline bg-gray-50 px-4 py-2 rounded-md border"
+                    className="flex items-center space-x-1 text-sm text-deep-blue dark:text-dark-primary hover:underline bg-gray-50 dark:bg-dark-bg px-4 py-2 rounded-md border border-gray-200 dark:border-dark-border"
                   >
                     <Crop size={16} />
                     <span>Crop & Rotate</span>
@@ -354,7 +354,7 @@ const ScanReceiptPage = () => {
             <button 
               onClick={handleScan}
               disabled={isScanning || images.length === 0}
-              className={`flex items-center space-x-2 bg-deep-blue text-white px-8 py-3 rounded-md font-bold text-lg shadow-lg transition-all ${
+              className={`flex items-center space-x-2 bg-deep-blue dark:bg-dark-primary text-white px-8 py-3 rounded-md font-bold text-lg shadow-lg transition-all ${
                 (isScanning || images.length === 0) ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 active:transform active:scale-95'
               }`}
             >

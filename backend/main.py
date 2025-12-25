@@ -1,10 +1,14 @@
 import yaml
 import os
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .routers import auth, purchases, ocr, payments, categories # ADDED categories
 from . import storage
+
+# Load environment variables
+load_dotenv()
 
 # Load configuration
 def load_config():

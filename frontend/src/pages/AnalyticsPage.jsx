@@ -26,9 +26,13 @@ import {
   Layer
 } from 'recharts';
 import api from '../api/axios';
+import useThemeStore from '../store/themeStore';
 
-const SankeyNode = ({ x, y, width, height, index, payload, containerWidth }) => {
+const SankeyNode = ({ x, y, width, height, index, payload, containerWidth, theme }) => {
   const isOut = x + width + 6 > containerWidth;
+  const nodeColor = theme === 'dark' ? '#60A5FA' : '#003366';
+  const textColor = theme === 'dark' ? '#94A3B8' : '#475569';
+
   return (
     <Layer key={`sankey-node-${index}`}>
       <rect
@@ -36,7 +40,7 @@ const SankeyNode = ({ x, y, width, height, index, payload, containerWidth }) => 
         y={y}
         width={width}
         height={height}
-        fill="#003366"
+        fill={nodeColor}
         fillOpacity="0.8"
       />
       <text
@@ -46,10 +50,10 @@ const SankeyNode = ({ x, y, width, height, index, payload, containerWidth }) => 
         verticalAnchor="middle"
         fontSize="10"
         fontWeight="bold"
-        fill="#475569"
+        fill={textColor}
       >
         {payload.name.replace(/^L\d: |^Item: /, '')}
-        <tspan fill="#003366" dx="5">
+        <tspan fill={nodeColor} dx="5">
           ({payload.value.toFixed(2)})
         </tspan>
       </text>
@@ -58,6 +62,7 @@ const SankeyNode = ({ x, y, width, height, index, payload, containerWidth }) => 
 };
 
 const AnalyticsPage = () => {
+  const { theme } = useThemeStore();
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [viewType, setViewType] = useState('cumulative');
@@ -403,11 +408,11 @@ const AnalyticsPage = () => {
                 <AreaChart data={getCumulativeData(stats.chart_data)} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#003366" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#003366" stopOpacity={0}/>
+                      <stop offset="5%" stopColor={theme === 'dark' ? '#60A5FA' : '#003366'} stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor={theme === 'dark' ? '#60A5FA' : '#003366'} stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#F1F5F9'} />
                   <XAxis 
                     dataKey="date" 
                     stroke="#94A3B8" 
@@ -427,7 +432,7 @@ const AnalyticsPage = () => {
                   <Area 
                     type="monotone" 
                     dataKey="cost" 
-                    stroke="#003366" 
+                    stroke={theme === 'dark' ? '#60A5FA' : '#003366'} 
                     strokeWidth={3}
                     fillOpacity={1} 
                     fill="url(#colorCost)" 
@@ -436,7 +441,7 @@ const AnalyticsPage = () => {
                 </AreaChart>
               ) : viewType === 'individual' ? (
                 <ScatterChart margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#F1F5F9'} />
                   <XAxis 
                     dataKey="date" 
                     name="Date" 
@@ -458,7 +463,13 @@ const AnalyticsPage = () => {
                   <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
                   <Scatter name="Purchases" data={stats.chart_data}>
                     {stats.chart_data.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill="#003366" fillOpacity={0.6} stroke="#003366" strokeWidth={2} />
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={theme === 'dark' ? '#60A5FA' : '#003366'} 
+                        fillOpacity={0.6} 
+                        stroke={theme === 'dark' ? '#60A5FA' : '#003366'} 
+                        strokeWidth={2} 
+                      />
                     ))}
                   </Scatter>
                 </ScatterChart>
@@ -480,8 +491,8 @@ const AnalyticsPage = () => {
                   })()}
                   margin={{ top: 20, left: 20, right: 150, bottom: 20 }}
                   nodePadding={30}
-                  link={{ stroke: '#003366', strokeOpacity: 0.1 }}
-                  node={<SankeyNode containerWidth={1000} />}
+                  link={{ stroke: theme === 'dark' ? '#60A5FA' : '#003366', strokeOpacity: 0.1 }}
+                  node={<SankeyNode containerWidth={1000} theme={theme} />}
                 >
                   <Tooltip 
                     content={({ active, payload }) => {

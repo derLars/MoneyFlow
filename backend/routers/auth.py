@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from .. import auth, database, models
+from ..repositories import user_repo
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -29,7 +30,7 @@ class NameChange(BaseModel):
 
 @router.post("/token")
 async def login_for_access_token(db: Session = Depends(database.get_db), form_data: OAuth2PasswordRequestForm = Depends()):
-    user = database.get_user_by_name(db, name=form_data.username)
+    user = user_repo.get_user_by_name(db, name=form_data.username)
     if not user or not auth.verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -58,7 +59,7 @@ async def list_users(
 ):
     if not current_user.administrator:
         raise HTTPException(status_code=403, detail="Not authorized")
-    users = database.get_all_users(db)
+    users = user_repo.get_all_users(db)
     return users
 
 @router.patch("/users/{user_id}/role")
@@ -70,7 +71,7 @@ async def update_user_role(
 ):
     if not current_user.administrator:
         raise HTTPException(status_code=403, detail="Not authorized")
-    user = database.set_administrator_rights(db, user_id=user_id, is_admin=is_admin)
+    user = user_repo.set_administrator_rights(db, user_id=user_id, is_admin=is_admin)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"status": "success", "administrator": user.administrator}
@@ -88,7 +89,7 @@ async def delete_user(
     if user_id == current_user.user_id:
         raise HTTPException(status_code=400, detail="Cannot delete your own admin account")
         
-    success = database.delete_user(db, user_id=user_id)
+    success = user_repo.delete_user(db, user_id=user_id)
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     return {"status": "success"}
@@ -104,7 +105,7 @@ async def change_password(
         raise HTTPException(status_code=400, detail="Incorrect current password")
     
     # 2. Update to new password
-    success = database.update_user_password(
+    success = user_repo.update_user_password(
         db, 
         user_id=current_user.user_id, 
         new_password_hash=auth.get_password_hash(data.new_password)
@@ -118,11 +119,11 @@ async def update_name(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     # Check uniqueness
-    existing = database.get_user_by_name(db, name=data.new_name)
+    existing = user_repo.get_user_by_name(db, name=data.new_name)
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
         
-    success = database.update_user_name(db, user_id=current_user.user_id, new_name=data.new_name)
+    success = user_repo.update_user_name(db, user_id=current_user.user_id, new_name=data.new_name)
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
         
@@ -139,11 +140,11 @@ async def create_user(
     if not current_user.administrator:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    existing = database.get_user_by_name(db, name=user_in.name)
+    existing = user_repo.get_user_by_name(db, name=user_in.name)
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
     
-    user = database.create_user(
+    user = user_repo.create_user(
         db, 
         name=user_in.name, 
         password_hash=auth.get_password_hash(user_in.password)
@@ -160,7 +161,7 @@ async def admin_override_password(
     if not current_user.administrator:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    success = database.update_user_password(
+    success = user_repo.update_user_password(
         db, 
         user_id=user_id, 
         new_password_hash=auth.get_password_hash(data.new_password)

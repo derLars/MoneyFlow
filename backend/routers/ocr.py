@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from typing import List, Dict
 from ..services import ocr_service
 from .. import auth
@@ -25,7 +26,7 @@ async def upload_receipt_images(
     # Call Mistral AI to structure the data
     try:
         print(f"DEBUG: Combined text for analysis:\n{combined_text}")
-        structured_items = ocr_service.analyze_information(combined_text)
+        structured_items = await run_in_threadpool(ocr_service.analyze_information, combined_text)
         print(f"DEBUG: Structured items from Mistral: {structured_items}")
         return structured_items
     except Exception as e:

@@ -4,6 +4,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 from datetime import date
 from .. import database, models, auth
+from ..repositories import payment_repo
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -39,7 +40,7 @@ def create_payment(payment: PaymentCreate, db: Session = Depends(database.get_db
     if current_user.user_id not in [payment.payer_user_id, payment.receiver_user_id]:
         raise HTTPException(status_code=403, detail="You must be either the sender or the receiver of the payment")
         
-    return database.create_payment(
+    return payment_repo.create_payment(
         db, 
         creator_user_id=current_user.user_id,
         payer_user_id=payment.payer_user_id,
@@ -51,12 +52,12 @@ def create_payment(payment: PaymentCreate, db: Session = Depends(database.get_db
 
 @router.get("/", response_model=List[PaymentResponse])
 def get_payments(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
-    return database.get_payments_for_user(db, current_user.user_id)
+    return payment_repo.get_payments_for_user(db, current_user.user_id)
 
 @router.delete("/{payment_id}")
 def delete_payment(payment_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Refined auth: sender, receiver or admin can delete
-    db_payment = db.query(models.Payment).filter(models.Payment.payment_id == payment_id).first()
+    db_payment = payment_repo.get_payment_by_id(db, payment_id)
     if not db_payment:
         raise HTTPException(status_code=404, detail="Payment not found")
     
@@ -69,10 +70,10 @@ def delete_payment(payment_id: int, db: Session = Depends(database.get_db), curr
     if not is_authorized:
         raise HTTPException(status_code=403, detail="Not authorized to delete this payment")
         
-    database.delete_payment(db, payment_id)
+    payment_repo.delete_payment(db, payment_id)
     return {"message": "Payment deleted"}
 
 @router.get("/balances", response_model=List[BalanceResponse])
 def get_balances(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Rule 2: User shall only be able to see the Balances that imply himself
-    return database.get_money_flow_balances(db, user_id=current_user.user_id)
+    return payment_repo.get_money_flow_balances(db, user_id=current_user.user_id)

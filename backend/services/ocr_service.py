@@ -6,6 +6,7 @@ import json
 import re
 from typing import List, Dict
 from fastapi import UploadFile
+from fastapi.concurrency import run_in_threadpool
 from mistralai import Mistral
 
 def preprocess_image(image: np.ndarray, threshold1: int, threshold2: int, save_path: str = None) -> np.ndarray:
@@ -128,10 +129,12 @@ async def process_image_file(file: UploadFile, threshold1: int = 125, threshold2
     # Step 1: Pre-process
     # Force saving the filtered image for development debugging
     debug_save_path = "tests/outputs/filtered.png"
-    preprocessed = preprocess_image(opencv_image, threshold1, threshold2, save_path=debug_save_path)
+    preprocessed = await run_in_threadpool(
+        preprocess_image, opencv_image, threshold1, threshold2, save_path=debug_save_path
+    )
     print(f"DEBUG: Preprocessed image saved to {debug_save_path}")
     
     # Step 2: Extract text
-    text = extract_information(preprocessed)
+    text = await run_in_threadpool(extract_information, preprocessed)
     
     return text

@@ -34,7 +34,7 @@ const ContributorDropdown = ({ allUsers, selectedIds, onChange }) => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-2 bg-light-gray rounded text-sm text-charcoal-gray border border-transparent focus:border-deep-blue transition"
+        className="w-full flex items-center justify-between p-2 bg-light-gray dark:bg-dark-bg rounded text-sm text-charcoal-gray dark:text-dark-text border border-transparent focus:border-deep-blue dark:focus:border-dark-primary transition"
       >
         <span className="truncate">
           {selectedIds.length === 0 
@@ -45,12 +45,12 @@ const ContributorDropdown = ({ allUsers, selectedIds, onChange }) => {
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="p-2 border-b border-gray-50 flex items-center gap-2 bg-gray-50/50">
-            <Search size={14} className="text-gray-400" />
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-dark-surface rounded-lg shadow-xl border border-gray-100 dark:border-dark-border overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="p-2 border-b border-gray-50 dark:border-dark-border flex items-center gap-2 bg-gray-50/50 dark:bg-dark-bg/50">
+            <Search size={14} className="text-gray-400 dark:text-dark-text-secondary" />
             <input
               type="text"
-              className="bg-transparent text-xs outline-none w-full"
+              className="bg-transparent text-xs outline-none w-full text-charcoal-gray dark:text-dark-text"
               placeholder="Search users..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -61,21 +61,21 @@ const ContributorDropdown = ({ allUsers, selectedIds, onChange }) => {
             {sortedUsers.map(u => (
               <label
                 key={u.user_id}
-                className="flex items-center gap-3 px-3 py-2 hover:bg-blue-50 cursor-pointer transition"
+                className="flex items-center gap-3 px-3 py-2 hover:bg-blue-50 dark:hover:bg-dark-primary/20 cursor-pointer transition"
               >
                 <div 
                     onClick={(e) => { e.preventDefault(); toggleUser(u.user_id); }}
                     className={`w-4 h-4 rounded border flex items-center justify-center transition ${
-                        selectedIds.includes(u.user_id) ? 'bg-deep-blue border-deep-blue text-white' : 'bg-white border-gray-300'
+                        selectedIds.includes(u.user_id) ? 'bg-deep-blue dark:bg-dark-primary border-deep-blue dark:border-dark-primary text-white' : 'bg-white dark:bg-dark-surface border-gray-300 dark:border-dark-border'
                     }`}
                 >
                     {selectedIds.includes(u.user_id) && <CheckSquare size={12} />}
                 </div>
-                <span className="text-sm font-medium text-charcoal-gray">{u.name}</span>
+                <span className="text-sm font-medium text-charcoal-gray dark:text-dark-text">{u.name}</span>
               </label>
             ))}
             {sortedUsers.length === 0 && (
-                <p className="p-4 text-xs text-gray-400 text-center italic">No users found</p>
+                <p className="p-4 text-xs text-gray-400 dark:text-dark-text-secondary text-center italic">No users found</p>
             )}
           </div>
         </div>

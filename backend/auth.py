@@ -1,14 +1,23 @@
+import os
 from datetime import datetime, timedelta
 from typing import Optional
+from dotenv import load_dotenv
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from . import database, models
+from .repositories import user_repo
 
-# Configuration (In a real app, these should be in config.yaml or env vars)
-SECRET_KEY = "moneyflow-secret-key-change-me-in-production"
+# Load environment variables
+load_dotenv()
+
+# Configuration
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY is missing from environment variables. Please check your .env file.")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -45,7 +54,7 @@ async def get_current_user(db: Session = Depends(database.get_db), token: str = 
     except JWTError:
         raise credentials_exception
     
-    user = database.get_user_by_name(db, name=username)
+    user = user_repo.get_user_by_name(db, name=username)
     if user is None:
         raise credentials_exception
     return user

@@ -7,6 +7,7 @@ import os
 from pydantic import BaseModel, field_validator
 from datetime import date
 from .. import database, auth, models, storage
+from ..repositories import purchase_repo, item_repo, user_repo
 from ..services import mapping_service
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
@@ -33,7 +34,7 @@ class PurchaseCreate(BaseModel):
 class ItemResponse(BaseModel):
     item_id: int
     purchase_id: int
-    friendly_name: str
+    friendly_name: Optional[str] = None
     original_name: Optional[str] = ""
     quantity: int
     price: float
@@ -98,7 +99,7 @@ async def create_purchase(
 
     try:
         # 1. Create the purchase record
-        db_purchase = database.create_purchase(
+        db_purchase = purchase_repo.create_purchase(
             db,
             creator_user_id=current_user.user_id,
             payer_user_id=purchase_in.payer_user_id,
@@ -119,7 +120,7 @@ async def create_purchase(
                 ext = os.path.splitext(file.filename)[1]
                 unique_filename = f"{uuid.uuid4()}{ext}"
                 store.upload_fileobj(file.file, unique_filename)
-                database.create_receipt_image(
+                purchase_repo.create_receipt_image(
                     db, 
                     purchase_id=db_purchase.purchase_id,
                     file_path=unique_filename,
@@ -130,7 +131,7 @@ async def create_purchase(
         # 3. Add items to the purchase
         print(f"DEBUG: Starting to add {len(purchase_in.items)} items to purchase {db_purchase.purchase_id}")
         for item_in in purchase_in.items:
-            db_item = database.add_item_to_purchase(
+            db_item = item_repo.add_item_to_purchase(
                 db,
                 purchase_id=db_purchase.purchase_id,
                 original_name=item_in.original_name or item_in.friendly_name,
@@ -145,7 +146,7 @@ async def create_purchase(
 
         # Assign contributors
         for user_id in item_in.contributors:
-            database.add_contributor_to_item(db, item_id=db_item.item_id, user_id=user_id)
+            item_repo.add_contributor_to_item(db, item_id=db_item.item_id, user_id=user_id)
 
         # Update Friendly Name Mapping logic (Section 6.11)
         if item_in.friendly_name:
@@ -184,7 +185,7 @@ async def update_purchase(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     # 1. Verify existence and permissions
-    db_purchase = database.get_purchase_by_id(db, purchase_id)
+    db_purchase = purchase_repo.get_purchase_by_id(db, purchase_id)
     if not db_purchase:
         raise HTTPException(status_code=404, detail="Purchase not found")
     
@@ -211,7 +212,7 @@ async def update_purchase(
         })
 
     # 3. Update metadata
-    database.update_purchase(
+    purchase_repo.update_purchase(
         db,
         purchase_id=purchase_id,
         purchase_name=purchase_in.purchase_name,
@@ -239,30 +240,30 @@ async def update_purchase(
             
             # 1. Categories
             if old_snapshot["category_level_1"] != item_in.category_level_1:
-                database.create_purchase_log(db, purchase_id, current_user.user_id, f"Category 1 for item {item_name_for_log} was changed from {old_snapshot['category_level_1'] or 'None'} to {item_in.category_level_1 or 'None'}")
+                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Category 1 for item {item_name_for_log} was changed from {old_snapshot['category_level_1'] or 'None'} to {item_in.category_level_1 or 'None'}")
             if old_snapshot["category_level_2"] != item_in.category_level_2:
-                database.create_purchase_log(db, purchase_id, current_user.user_id, f"Category 2 for item {item_name_for_log} was changed from {old_snapshot['category_level_2'] or 'None'} to {item_in.category_level_2 or 'None'}")
+                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Category 2 for item {item_name_for_log} was changed from {old_snapshot['category_level_2'] or 'None'} to {item_in.category_level_2 or 'None'}")
             if old_snapshot["category_level_3"] != item_in.category_level_3:
-                database.create_purchase_log(db, purchase_id, current_user.user_id, f"Category 3 for item {item_name_for_log} was changed from {old_snapshot['category_level_3'] or 'None'} to {item_in.category_level_3 or 'None'}")
+                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Category 3 for item {item_name_for_log} was changed from {old_snapshot['category_level_3'] or 'None'} to {item_in.category_level_3 or 'None'}")
             
             # 2. Quantity
             if old_snapshot["quantity"] != item_in.quantity:
-                database.create_purchase_log(db, purchase_id, current_user.user_id, f"Quantity for item {item_name_for_log} was changed from {old_snapshot['quantity']} to {item_in.quantity}")
+                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Quantity for item {item_name_for_log} was changed from {old_snapshot['quantity']} to {item_in.quantity}")
 
             # 3. Price
             if old_snapshot["price"] != float(item_in.price):
-                database.create_purchase_log(db, purchase_id, current_user.user_id, f"Price for item {item_name_for_log} was changed from {old_snapshot['price']} to {item_in.price}")
+                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Price for item {item_name_for_log} was changed from {old_snapshot['price']} to {item_in.price}")
             
             # 4. Contributors - Now comparing pure integer lists
             new_contributors = sorted([int(c) for c in item_in.contributors])
             
             if old_snapshot["contributors"] != new_contributors:
-                database.create_purchase_log(db, purchase_id, current_user.user_id, f"Contributors for item {item_name_for_log} were updated")
+                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Contributors for item {item_name_for_log} were updated")
             
             # 4. Name
             if old_snapshot["friendly_name"] != item_in.friendly_name:
-                database.create_purchase_log(db, purchase_id, current_user.user_id, f"Item name {old_snapshot['friendly_name'] or old_snapshot['original_name']} was renamed to {item_in.friendly_name}")
-        db_item = database.add_item_to_purchase(
+                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Item name {old_snapshot['friendly_name'] or old_snapshot['original_name']} was renamed to {item_in.friendly_name}")
+        db_item = item_repo.add_item_to_purchase(
             db,
             purchase_id=purchase_id,
             original_name=item_in.original_name or item_in.friendly_name,
@@ -274,7 +275,7 @@ async def update_purchase(
             category_level_3=item_in.category_level_3
         )
         for user_id in item_in.contributors:
-            database.add_contributor_to_item(db, item_id=db_item.item_id, user_id=user_id)
+            item_repo.add_contributor_to_item(db, item_id=db_item.item_id, user_id=user_id)
         
         # Update Mapping logic
         if item_in.friendly_name:
@@ -293,7 +294,7 @@ async def get_recent_purchases(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    purchases = database.get_recent_purchases(db, user_id=current_user.user_id)
+    purchases = purchase_repo.get_recent_purchases(db, user_id=current_user.user_id)
     
     # Populate URLs for images in each purchase
     store = storage.get_storage()
@@ -309,7 +310,7 @@ async def delete_purchase(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    db_purchase = database.get_purchase_by_id(db, purchase_id)
+    db_purchase = purchase_repo.get_purchase_by_id(db, purchase_id)
     if not db_purchase:
         raise HTTPException(status_code=404, detail="Purchase not found")
     
@@ -321,7 +322,7 @@ async def delete_purchase(
     if not is_authorized:
         raise HTTPException(status_code=403, detail="Not authorized to delete this purchase")
     
-    database.delete_purchase(db, purchase_id)
+    purchase_repo.delete_purchase(db, purchase_id)
     return {"status": "success"}
 
 class LogCreate(BaseModel):
@@ -333,12 +334,12 @@ async def get_purchase_logs(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    db_purchase = database.get_purchase_by_id(db, purchase_id)
+    db_purchase = purchase_repo.get_purchase_by_id(db, purchase_id)
     if not db_purchase:
         raise HTTPException(status_code=404, detail="Purchase not found")
     
     # Simple check: anyone who can view can see logs
-    logs = database.get_logs_for_purchase(db, purchase_id)
+    logs = purchase_repo.get_logs_for_purchase(db, purchase_id)
     return [{"id": l.log_id, "user_id": l.user_id, "message": l.log_message, "timestamp": l.timestamp} for l in logs]
 
 @router.post("/{purchase_id}/logs")
@@ -348,7 +349,7 @@ async def add_purchase_log(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    database.create_purchase_log(db, purchase_id=purchase_id, user_id=current_user.user_id, message=log_in.message)
+    purchase_repo.create_purchase_log(db, purchase_id=purchase_id, user_id=current_user.user_id, message=log_in.message)
     return {"status": "success"}
 
 @router.get("/{purchase_id}", response_model=PurchaseResponse)
@@ -357,7 +358,7 @@ async def get_purchase(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    db_purchase = database.get_purchase_by_id(db, purchase_id=purchase_id)
+    db_purchase = purchase_repo.get_purchase_by_id(db, purchase_id=purchase_id)
     if not db_purchase:
         raise HTTPException(status_code=404, detail="Purchase not found")
     
@@ -387,7 +388,7 @@ async def get_all_users(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    users = database.get_all_users(db)
+    users = user_repo.get_all_users(db)
     return [{"user_id": u.user_id, "name": u.name} for u in users]
 
 @router.get("/", response_model=List[PurchaseResponse])
@@ -397,7 +398,7 @@ async def list_purchases(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    purchases = database.get_purchases_for_user(
+    purchases = purchase_repo.get_purchases_for_user(
         db, 
         user_id=current_user.user_id, 
         search=search, 
@@ -425,7 +426,7 @@ async def get_stats(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    purchases = database.get_analytics_data(
+    purchases = purchase_repo.get_analytics_data(
         db, 
         user_id=current_user.user_id,
         time_frame=time_frame,
