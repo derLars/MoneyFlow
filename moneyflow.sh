@@ -106,6 +106,9 @@ read -s -p "Set Moneyflow Admin Password: " ADMIN_PASS
 echo ""
 read -p "Enter Mistral API Key (Optional): " MISTRAL_KEY
 
+# Generate random secret key
+APP_SECRET_KEY=$(openssl rand -hex 32)
+
 # --- Execution ---
 
 # Get storage for template
@@ -171,18 +174,12 @@ cd moneyflow
 
 # Setup Environment
 cat <<EOT > .env
+SECRET_KEY=$APP_SECRET_KEY
 MISTRAL_API_KEY=$MISTRAL_KEY
 EOT
-
-cat <<EOT > secret.env
-MISTRAL_API_KEY=$MISTRAL_KEY
-EOT
->>>>+++ REPLACE
-
 
 # Create admin user
 # Note: We need to wait for containers to be up to run the script
-# But we can use a temporary docker-compose up
 docker compose up -d
 
 # Wait for backend to be ready
@@ -192,9 +189,34 @@ until curl -s http://localhost:8002/ > /dev/null; do
 done
 
 # Run create admin user script
-# Assuming the script handles password from env or arg
-# Based on project structure, we might need to exec into backend container
 docker exec moneyflow-backend python3 create_admin_user.py --username admin --password "$ADMIN_PASS" || true
+
+# Setup MOTD (Message of the Day)
+cat <<'MOTD' > /etc/motd
+
+  __  __                       __ _                 
+ |  \/  |                     / _| |                
+ | \  / | ___  _ __   ___ _ _| |_| | _____      __ 
+ | |\/| |/ _ \| '_ \ / _ \ | |  _| |/ _ \ \ /\ / / 
+ | |  | | (_) | | | |  __/ |_| | | | (_) \ V  V /  
+ |_|  |_|\___/|_| |_|\___|\__, |_| |_|\___/ \_/\_/   
+                           __/ |                    
+                          |___/                     
+
+Welcome to Moneyflow LXC Container!
+-----------------------------------
+- Web Interface: http://\$(hostname -I | awk '{print \$1}')
+- Application Directory: /root/moneyflow
+
+Maintenance Commands:
+- Reset Admin Password:
+  cd /root/moneyflow && docker exec -it moneyflow-backend python3 create_admin_user.py --username admin --password NEW_PASSWORD
+- Change Mistral API Key:
+  Edit /root/moneyflow/.env and run: cd /root/moneyflow && docker compose up -d
+- View Logs:
+  cd /root/moneyflow && docker compose logs -f
+
+MOTD
 
 echo "Setup Complete!"
 EOF
