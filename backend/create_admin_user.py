@@ -1,5 +1,6 @@
 import sys
 import os
+import argparse
 
 # Ensure the app directory is in the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -8,10 +9,10 @@ import database
 import auth
 from repositories import user_repo
 
-def create_admin():
+def create_admin(username=None, password=None):
     db = database.SessionLocal()
-    username = "admin"
-    password = "adminpassword"
+    username = username or "admin"
+    password = password or "adminpassword"
     
     try:
         existing_user = user_repo.get_user_by_name(db, username)
@@ -33,4 +34,9 @@ def create_admin():
         db.close()
 
 if __name__ == "__main__":
-    create_admin()
+    parser = argparse.ArgumentParser(description="Create or update admin user.")
+    parser.add_argument("--username", help="Admin username")
+    parser.add_argument("--password", help="Admin password")
+    args = parser.parse_args()
+    
+    create_admin(username=args.username, password=args.password)
