@@ -272,4 +272,4 @@ CT_IP=$(pct exec $CT_ID -- hostname -I | awk '{print $1}')
 info "Installation finished!"
 info "Moneyflow is running at: http://$CT_IP"
 info "Admin user: admin"
-info "Admin pass: (as provided)"
+info "Admin pass: [set during installation]"
