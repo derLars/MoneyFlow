@@ -36,16 +36,44 @@ echo "--------------------------------------"
 
 # --- Configuration Gathering ---
 
-# 1. Container ID
+# 1. LXC Root Password
+while true; do
+    read -s -p "Set LXC Root Password: " ROOT_PASS
+    echo ""
+    read -s -p "Confirm LXC Root Password: " ROOT_PASS_CONFIRM
+    echo ""
+    if [ "$ROOT_PASS" == "$ROOT_PASS_CONFIRM" ] && [ -n "$ROOT_PASS" ]; then
+        break
+    else
+        warn "Passwords do not match or are empty. Please try again."
+    fi
+done
+info "LXC Root Password set."
+
+# 2. Moneyflow Admin Password
+while true; do
+    read -s -p "Set Moneyflow Admin Password: " ADMIN_PASS
+    echo ""
+    read -s -p "Confirm Moneyflow Admin Password: " ADMIN_PASS_CONFIRM
+    echo ""
+    if [ "$ADMIN_PASS" == "$ADMIN_PASS_CONFIRM" ] && [ -n "$ADMIN_PASS" ]; then
+        break
+    else
+        warn "Passwords do not match or are empty. Please try again."
+    fi
+done
+info "Moneyflow Admin Password set."
+
+# 3. Container ID
 NEXT_ID=$(pvesh get /cluster/nextid)
 read -p "Enter Container ID (Default: $NEXT_ID): " CT_ID
 CT_ID=${CT_ID:-$NEXT_ID}
 
-# 2. Hostname
+# 4. Hostname
 read -p "Enter Hostname (Default: moneyflow): " CT_NAME
 CT_NAME=${CT_NAME:-moneyflow}
 
-# 3. Privileged or Unprivileged
+# 5. Privileged or Unprivileged
 read -p "Create unprivileged container? (y/n, Default: y): " UNPRIV
 UNPRIV=${UNPRIV:-y}
 if [ "$UNPRIV" == "y" ]; then
@@ -56,7 +84,7 @@ else
     warn "Using privileged container."
 fi
 
-# 4. Resources
+# 6. Resources
 read -p "CPU Cores (Default: 2): " CORES
 CORES=${CORES:-2}
 
@@ -66,7 +94,7 @@ RAM=${RAM:-2048}
 read -p "Storage Space in GB (Default: 16): " DISK
 DISK=${DISK:-16}
 
-# 5. Network
+# 7. Network
 read -p "Network Bridge (Default: vmbr0): " BRIDGE
 BRIDGE=${BRIDGE:-vmbr0}
 
@@ -101,9 +129,7 @@ else
     IP_CONFIG="$IP_CONFIG,ip6=manual"
 fi
 
-# 6. Moneyflow Config
-read -s -p "Set Moneyflow Admin Password: " ADMIN_PASS
-echo ""
+# 8. Mistral API Key
 read -p "Enter Mistral API Key (Optional): " MISTRAL_KEY
 
 # Generate random secret key
@@ -142,6 +168,7 @@ fi
 info "Creating LXC container $CT_ID ($CT_NAME)..."
 pct create $CT_ID "$TEMPLATE_PATH" \
     --hostname "$CT_NAME" \
+    --password "$ROOT_PASS" \
     --cores "$CORES" \
     --memory "$RAM" \
     --net0 name=eth0,bridge="$BRIDGE",$IP_CONFIG \
@@ -157,12 +184,6 @@ pct create $CT_ID "$TEMPLATE_PATH" \
 # Apply sysctl fix for unprivileged Docker before starting
 if [ "$UNPRIV" == "y" ]; then
     info "Applying sysctl fix for unprivileged Docker..."
-    # Note: We can't always set sysctl inside unprivileged LXC, 
-    # but we can try to ensure the container config allows it if possible, 
-    # or rely on our port 8080 mapping fix which is more reliable.
-    # The error "open sysctl net.ipv4.ip_unprivileged_port_start file: permission denied"
-    # often happens when Docker tries to configure the kernel.
-    # We will also add a config entry to the LXC to ignore this if needed.
     echo "lxc.apparmor.profile: unconfined" >> /etc/pve/lxc/$CT_ID.conf
 fi
 
