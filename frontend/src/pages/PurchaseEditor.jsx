@@ -457,13 +457,17 @@ const PurchaseEditor = () => {
       const purchaseData = {
         ...purchase,
         payer_user_id: parseInt(purchase.payer_user_id),
-        items: items.map(({ id: _, ...item }) => ({
-          ...item,
+        items: items.map((item) => ({
+          original_name: item.original_name || item.friendly_name || '',
+          friendly_name: item.friendly_name || '',
           price: parseFloat(item.price) || 0,
           quantity: parseInt(item.quantity) || 1,
           discount: parseFloat(item.discount) || 0,
           tax_rate: parseFloat(item.tax_rate) || 0,
-          contributors: item.contributors.map(c => parseInt(c)).filter(c => !isNaN(c))
+          category_level_1: item.category_level_1 || '',
+          category_level_2: item.category_level_2 || '',
+          category_level_3: item.category_level_3 || '',
+          contributors: (item.contributors || []).map(c => parseInt(c)).filter(c => !isNaN(c))
         }))
       };
 
