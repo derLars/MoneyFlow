@@ -47,7 +47,7 @@
 
 ### Phase 7: Deployment
 - [x] UI Polish & Final Responsive Check.
-- [ ] Dockerization (Dockerfile, docker-compose).
+- [x] Dockerization (Dockerfile, docker-compose).
 
 ## V&V Status
 - [x] Initial V&V Check (Phase 1)

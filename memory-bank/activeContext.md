@@ -1,13 +1,15 @@
 # Active Context: Moneyflow
 
 ## Current Status
-We have completed the initial requirement analysis and established the development strategy based on `Spec.pdf`, `Roadmap.pdf`, and `Verification.pdf`. The project is now moving into Phase 1: Project Initialization & Infrastructure.
+The project is now in a stable, feature-complete state. All development phases (1-7) from the `Roadmap.pdf` have been implemented and verified. The application is containerized and ready for both development and production deployment.
 
 ## Current Focus
-- **Phase 7: Deployment & Dockerization**
-- Finalizing the containerization strategy for easy self-hosting.
+- **Project Handover & Maintenance**
+- Ready for official server launch and user onboarding.
 
 ## Recent Decisions
+- **Personalized KPIs**: Home page now strictly shows individual monthly spending, accounting for cost-splitting.
+- **Docker Automation**: Containers now automatically handle `npm install` and database migrations on startup.
 - **Port Change**: Backend now runs on port `8002` to avoid conflicts.
 - **OCR Thresholds**: Set to `t1=125` and `t2=400` for better accuracy with current receipts.
 - **Debug Trace**: Filtered OCR images are saved to `tests/outputs/filtered.png` during development.
@@ -17,12 +19,14 @@ We have completed the initial requirement analysis and established the developme
 - **UI Architecture**: Tailwind config will strictly follow the color palette from Section 15.1 of the spec.
 
 ## Next Steps
-1. **Step 22: Dockerization** - Create Dockerfile and docker-compose.yml for the full stack.
+1. **Official Server Launch**: Deploy via `docker compose up --build -d`.
+2. **User Creation**: Generate initial admin accounts using `create_admin_user.py`.
 
 ## Recent Changes
-- Renamed "Dashboard" to "Analytics" throughout the application for better clarity.
-- Implemented a Sankey Diagram in the Analytics view to visualize spending flow across category levels down to individual items.
-- Enhanced backend `/stats/analytics` endpoint to aggregate hierarchical data for Sankey visualization.
+- **Archive Payer Display**: Updated the purchase archive to show usernames instead of IDs, with fallback for deleted accounts.
+- **Item Reordering**: Added drag-and-drop item reordering in the Purchase Editor for mobile and desktop.
+- **KPI Refinement**: Simplified the main page to focus on individual monthly spending.
+- **Docker Production Finalization**: Configured optimized Nginx frontend and automatic backend migrations.
 
 ## Active Considerations
 - **V&V Gates**: Each step has specific validation prompts that must be followed.
