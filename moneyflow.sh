@@ -174,6 +174,12 @@ cat <<EOT > .env
 MISTRAL_API_KEY=$MISTRAL_KEY
 EOT
 
+cat <<EOT > secret.env
+MISTRAL_API_KEY=$MISTRAL_KEY
+EOT
+>>>>+++ REPLACE
+
+
 # Create admin user
 # Note: We need to wait for containers to be up to run the script
 # But we can use a temporary docker-compose up
