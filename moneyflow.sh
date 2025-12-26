@@ -64,16 +64,19 @@ while true; do
 done
 info "Moneyflow Admin Password set."
 
-# 3. Container ID
+# 3. Mistral API Key
+read -p "Enter Mistral API Key (Optional): " MISTRAL_KEY
+
+# 4. Container ID
 NEXT_ID=$(pvesh get /cluster/nextid)
 read -p "Enter Container ID (Default: $NEXT_ID): " CT_ID
 CT_ID=${CT_ID:-$NEXT_ID}
 
-# 4. Hostname
+# 5. Hostname
 read -p "Enter Hostname (Default: moneyflow): " CT_NAME
 CT_NAME=${CT_NAME:-moneyflow}
 
-# 5. Privileged or Unprivileged
+# 6. Privileged or Unprivileged
 read -p "Create unprivileged container? (y/n, Default: y): " UNPRIV
 UNPRIV=${UNPRIV:-y}
 if [ "$UNPRIV" == "y" ]; then
@@ -84,7 +87,7 @@ else
     warn "Using privileged container."
 fi
 
-# 6. Resources
+# 7. Resources
 read -p "CPU Cores (Default: 2): " CORES
 CORES=${CORES:-2}
 
@@ -94,7 +97,7 @@ RAM=${RAM:-2048}
 read -p "Storage Space in GB (Default: 16): " DISK
 DISK=${DISK:-16}
 
-# 7. Network
+# 8. Network
 read -p "Network Bridge (Default: vmbr0): " BRIDGE
 BRIDGE=${BRIDGE:-vmbr0}
 
@@ -128,9 +131,6 @@ if [ "$USE_IPV6" == "y" ]; then
 else
     IP_CONFIG="$IP_CONFIG,ip6=manual"
 fi
-
-# 8. Mistral API Key
-read -p "Enter Mistral API Key (Optional): " MISTRAL_KEY
 
 # Generate random secret key
 APP_SECRET_KEY=$(openssl rand -hex 32)
@@ -267,7 +267,10 @@ EOF
 pct push $CT_ID /tmp/mf_setup.sh /root/mf_setup.sh
 pct exec $CT_ID -- bash /root/mf_setup.sh
 
+# Retrieve container IP
+CT_IP=$(pct exec $CT_ID -- hostname -I | awk '{print $1}')
+
 info "Installation finished!"
-info "Moneyflow is running at: http://$STATIC_IP (or your DHCP assigned IP)"
+info "Moneyflow is running at: http://$CT_IP"
 info "Admin user: admin"
 info "Admin pass: (as provided)"
