@@ -249,8 +249,6 @@ cat <<'MOTD' > /etc/motd
 Welcome to Moneyflow LXC Container!
 -----------------------------------
 - Application Directory: /root/moneyflow
->>>>+++ REPLACE
-
 
 Maintenance Commands:
 - Reset Admin Password:
