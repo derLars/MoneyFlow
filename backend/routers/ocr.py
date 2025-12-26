@@ -1,32 +1,30 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
-from typing import List, Dict
-from ..services import ocr_service
-from .. import auth
+import sys
+import os
+
+# Ensure the parent directory is in the path so we can import models/database etc
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from sqlalchemy.orm import Session
+from typing import List
+import database, auth, models
+import services.ocr_service as ocr_service
 
 router = APIRouter(prefix="/ocr", tags=["ocr"])
 
-@router.post("/upload", response_model=List[Dict])
-async def upload_receipt_images(
+@router.post("/upload")
+async def scan_receipt(
     files: List[UploadFile] = File(...),
-    current_user = Depends(auth.get_current_user)
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
 ):
-    """
-    Uses Pixtral (Vision LLM) to analyze receipt images directly.
-    """
-    if not files:
-        raise HTTPException(status_code=400, detail="No files uploaded")
+    if len(files) > 5:
+        raise HTTPException(status_code=400, detail="Maximum 5 images allowed")
 
     try:
-        # Pass the files directly to the Vision service
-        structured_items = await ocr_service.process_receipts_with_pixtral(files)
-        print(f"DEBUG: Structured items from Pixtral: {structured_items}")
-        
-        if not structured_items:
-             # It might return empty list if nothing found or error caught inside service
-             # We can optionally raise 400 if strictly nothing found, or just return []
-             pass
-             
-        return structured_items
+        # Step 1-3: Preprocess, Extract, Analyze (now using process_receipts_with_pixtral)
+        items = await ocr_service.process_receipts_with_pixtral(files)
+        return {"items": items}
     except Exception as e:
-        print(f"Vision Analysis Error: {e}")
-        raise HTTPException(status_code=500, detail=f"AI Analysis failed: {str(e)}")
+        print(f"OCR Scan Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

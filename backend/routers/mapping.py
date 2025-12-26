@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from .. import database, auth
-from ..services import mapping_service
+import database
+import auth
+from services import mapping_service
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/mapping", tags=["mapping"])

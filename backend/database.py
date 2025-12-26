@@ -5,15 +5,21 @@ from sqlalchemy.orm import sessionmaker
 
 # Load configuration
 def load_config():
-    config_path = os.path.join(os.path.dirname(__file__), "..", "config.yaml")
+    config_path = "config.yaml"
+    if not os.path.exists(config_path):
+        config_path = os.path.join(os.path.dirname(__file__), "..", "config.yaml")
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
 config = load_config()
 db_config = config.get("database", {})
 
-if db_config.get("type") == "postgresql":
-    SQLALCHEMY_DATABASE_URL = db_config.get("url")
+# Override with environment variables if present
+db_type = os.getenv("DATABASE_TYPE", db_config.get("type", "sqlite"))
+db_url = os.getenv("DATABASE_URL", db_config.get("url"))
+
+if db_type == "postgresql":
+    SQLALCHEMY_DATABASE_URL = db_url
 else:
     # Default to SQLite
     sqlite_path = db_config.get("path", "./database.db")

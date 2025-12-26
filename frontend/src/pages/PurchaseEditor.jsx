@@ -1,5 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, GripVertical, Info, Save, X, ChevronRight, CheckSquare, Square, Receipt, History, AlertTriangle, Loader2, ChevronDown, Search, Maximize2 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  TouchSensor,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import useAuthStore from '../store/authStore';
 import api, { getCategoriesByLevel, createCategory } from '../api/axios';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -258,6 +275,176 @@ const CategoryInput = ({ value, onChange, options, placeholder, disabled = false
   );
 };
 
+const SortableItem = ({ 
+  item, 
+  purchase, 
+  updateItem, 
+  deleteItem, 
+  allUsers, 
+  categoriesLevel1, 
+  categoriesLevel2, 
+  categoriesLevel3,
+  user
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={`bg-white dark:bg-dark-surface rounded-lg shadow-sm border border-gray-100 dark:border-dark-border flex overflow-hidden group ${isDragging ? 'ring-2 ring-deep-blue dark:ring-dark-primary shadow-xl' : ''}`}
+    >
+      {/* Drag Handle - Optimized for Touch */}
+      <div 
+        {...attributes} 
+        {...listeners}
+        className="w-12 bg-gray-50 dark:bg-dark-bg flex items-center justify-center text-gray-300 dark:text-dark-text-secondary border-r border-gray-100 dark:border-dark-border cursor-grab active:cursor-grabbing touch-none"
+      >
+        <GripVertical size={24} />
+      </div>
+
+      {/* Card Content */}
+      <div className="flex-grow p-4 space-y-4">
+        {/* Top Row: Names */}
+        <div className="flex justify-between items-start">
+          <div className="flex-grow max-w-md">
+            <input
+              type="text"
+              className="w-full text-lg font-bold text-charcoal-gray dark:text-dark-text bg-transparent border-b border-transparent focus:border-deep-blue dark:focus:border-dark-primary outline-none transition"
+              placeholder="Friendly Name"
+              value={item.friendly_name}
+              onChange={(e) => updateItem(item.id, 'friendly_name', e.target.value)}
+            />
+            {item.original_name && (
+              <p className="text-xs text-gray-400 dark:text-dark-text-secondary mt-1 italic">Original: {item.original_name}</p>
+            )}
+          </div>
+          <button 
+            onClick={() => deleteItem(item.id)}
+            className="text-gray-300 dark:text-dark-text-secondary hover:text-alert-red transition p-2"
+          >
+            <Trash2 size={20} />
+          </button>
+        </div>
+
+        {/* Middle Row 1: Qty, Price, Tax, Discount, Contributors */}
+        <div className={`grid grid-cols-2 ${
+            (purchase.discount_is_applied && purchase.tax_is_added) ? 'md:grid-cols-6' : 
+            (purchase.discount_is_applied || purchase.tax_is_added) ? 'md:grid-cols-5' : 
+            'md:grid-cols-4'
+        } gap-4`}>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Qty</label>
+            <input
+              type="number"
+              className="w-full p-2 bg-light-gray dark:bg-dark-bg dark:text-dark-text rounded outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary"
+              value={item.quantity}
+              onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Price</label>
+            <input
+              type="number"
+              step="0.01"
+              className="w-full p-2 bg-light-gray dark:bg-dark-bg dark:text-dark-text rounded outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary"
+              value={item.price}
+              onChange={(e) => updateItem(item.id, 'price', e.target.value)}
+            />
+          </div>
+          {purchase.tax_is_added && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Tax</label>
+              <TaxRateDropdown
+                commonRates={(user?.common_tax_rates || "0,20").split(',')}
+                value={item.tax_rate}
+                onChange={(val) => updateItem(item.id, 'tax_rate', val)}
+              />
+            </div>
+          )}
+          {purchase.discount_is_applied && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Discount</label>
+              <input
+                type="number"
+                step="0.01"
+                className="w-full p-2 bg-light-gray dark:bg-dark-bg dark:text-dark-text rounded outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary text-vibrant-green"
+                value={item.discount}
+                onChange={(e) => updateItem(item.id, 'discount', e.target.value)}
+              />
+            </div>
+          )}
+          <div className="col-span-2">
+            <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Contributors</label>
+            <ContributorDropdown 
+                allUsers={allUsers}
+                selectedIds={item.contributors || []}
+                onChange={(updated) => updateItem(item.id, 'contributors', updated)}
+            />
+          </div>
+        </div>
+
+        {/* Per-person Contribution Display */}
+        {(item.contributors?.length > 0) && (
+          <div className="text-[11px] font-bold text-deep-blue dark:text-dark-primary flex items-center gap-1 bg-blue-50/50 dark:bg-dark-primary/10 w-fit px-3 py-1 rounded-full">
+            <span className="opacity-70">Share: {(
+                ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1) * (1 + (parseFloat(item.tax_rate) || 0) / 100) - (parseFloat(item.discount) || 0)) 
+                / item.contributors.length
+            ).toFixed(2)} per person</span>
+          </div>
+        )}
+
+        {/* Middle Row 2: Category Levels */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50/50 dark:bg-dark-bg p-3 rounded-md">
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Category 1</label>
+            <CategoryInput
+              value={item.category_level_1}
+              onChange={(value) => updateItem(item.id, 'category_level_1', value)}
+              options={categoriesLevel1}
+              placeholder="e.g. Food"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Category 2</label>
+            <CategoryInput
+              value={item.category_level_2}
+              onChange={(value) => updateItem(item.id, 'category_level_2', value)}
+              options={categoriesLevel2}
+              placeholder="e.g. Dairy"
+              disabled={!item.category_level_1}
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Category 3</label>
+            <CategoryInput
+              value={item.category_level_3}
+              onChange={(value) => updateItem(item.id, 'category_level_3', value)}
+              options={categoriesLevel3}
+              placeholder="e.g. Cheese"
+              disabled={!item.category_level_2}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 const PurchaseEditor = () => {
   const { user } = useAuthStore();
@@ -288,6 +475,24 @@ const PurchaseEditor = () => {
   const [categoriesLevel2, setCategoriesLevel2] = useState([]);
   const [categoriesLevel3, setCategoriesLevel3] = useState([]);
 
+  // Sensors for Drag and Drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+        activationConstraint: {
+            delay: 250,
+            tolerance: 5,
+        },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   // Fetch categories for each level
   useEffect(() => {
     if (!user?.user_id) return;
@@ -313,7 +518,10 @@ const PurchaseEditor = () => {
       const { extractedData, receiptImages: images } = location.state;
       console.log("DEBUG: Initializing editor with extracted data:", extractedData);
       
-      const mappedItems = extractedData.map((item, index) => ({
+      // Fix: extractedData might be an object { items: [...] } or a direct array
+      const itemsArray = Array.isArray(extractedData) ? extractedData : (extractedData.items || []);
+      
+      const mappedItems = itemsArray.map((item, index) => ({
         id: Date.now() + index,
         friendly_name: item.friendly_name || item.extracted_name || '',
         original_name: item.extracted_name || '',
@@ -474,6 +682,19 @@ const PurchaseEditor = () => {
     }
   };
 
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (active.id !== over.id) {
+      setItems((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id);
+        const newIndex = items.findIndex((i) => i.id === over.id);
+
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
   const handleConfirm = async () => {
     if (!purchase.purchase_name) {
       alert("Please provide a purchase name");
@@ -534,7 +755,7 @@ const PurchaseEditor = () => {
           }
         });
 
-        const response = await api.post('/purchases/', formData, {
+        const response = await api.post('/purchases', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
         
@@ -738,139 +959,31 @@ const PurchaseEditor = () => {
         </div>
 
         <div className="space-y-4">
-          {items.map((item) => (
-            <div key={item.id} className="bg-white dark:bg-dark-surface rounded-lg shadow-sm border border-gray-100 dark:border-dark-border flex overflow-hidden group">
-              {/* Drag Handle */}
-              <div className="w-10 bg-gray-50 dark:bg-dark-bg flex items-center justify-center text-gray-300 dark:text-dark-text-secondary border-r border-gray-100 dark:border-dark-border cursor-grab active:cursor-grabbing">
-                <GripVertical size={20} />
-              </div>
-
-              {/* Card Content */}
-              <div className="flex-grow p-4 space-y-4">
-                {/* Top Row: Names */}
-                <div className="flex justify-between items-start">
-                  <div className="flex-grow max-w-md">
-                    <input
-                      type="text"
-                      className="w-full text-lg font-bold text-charcoal-gray dark:text-dark-text bg-transparent border-b border-transparent focus:border-deep-blue dark:focus:border-dark-primary outline-none transition"
-                      placeholder="Friendly Name"
-                      value={item.friendly_name}
-                      onChange={(e) => updateItem(item.id, 'friendly_name', e.target.value)}
-                    />
-                    {item.original_name && (
-                      <p className="text-xs text-gray-400 dark:text-dark-text-secondary mt-1 italic">Original: {item.original_name}</p>
-                    )}
-                  </div>
-                  <button 
-                    onClick={() => deleteItem(item.id)}
-                    className="text-gray-300 dark:text-dark-text-secondary hover:text-alert-red transition"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
-
-                {/* Middle Row 1: Qty, Price, Tax, Discount, Contributors */}
-                <div className={`grid grid-cols-2 ${
-                    (purchase.discount_is_applied && purchase.tax_is_added) ? 'md:grid-cols-6' : 
-                    (purchase.discount_is_applied || purchase.tax_is_added) ? 'md:grid-cols-5' : 
-                    'md:grid-cols-4'
-                } gap-4`}>
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Qty</label>
-                    <input
-                      type="number"
-                      className="w-full p-2 bg-light-gray dark:bg-dark-bg dark:text-dark-text rounded outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary"
-                      value={item.quantity}
-                      onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Price</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="w-full p-2 bg-light-gray dark:bg-dark-bg dark:text-dark-text rounded outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary"
-                      value={item.price}
-                      onChange={(e) => updateItem(item.id, 'price', e.target.value)}
-                    />
-                  </div>
-                  {purchase.tax_is_added && (
-                    <div>
-                      <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Tax</label>
-                      <TaxRateDropdown
-                        commonRates={(user?.common_tax_rates || "0,20").split(',')}
-                        value={item.tax_rate}
-                        onChange={(val) => updateItem(item.id, 'tax_rate', val)}
-                      />
-                    </div>
-                  )}
-                  {purchase.discount_is_applied && (
-                    <div>
-                      <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Discount</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="w-full p-2 bg-light-gray dark:bg-dark-bg dark:text-dark-text rounded outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary text-vibrant-green"
-                        value={item.discount}
-                        onChange={(e) => updateItem(item.id, 'discount', e.target.value)}
-                      />
-                    </div>
-                  )}
-                  <div className="col-span-2">
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Contributors</label>
-                    <ContributorDropdown 
-                        allUsers={allUsers}
-                        selectedIds={item.contributors || []}
-                        onChange={(updated) => updateItem(item.id, 'contributors', updated)}
-                    />
-                  </div>
-                </div>
-
-                {/* Per-person Contribution Display */}
-                {(item.contributors?.length > 0) && (
-                  <div className="text-[11px] font-bold text-deep-blue dark:text-dark-primary flex items-center gap-1 bg-blue-50/50 dark:bg-dark-primary/10 w-fit px-3 py-1 rounded-full">
-                    <span className="opacity-70">Share: {(
-                        ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1) * (1 + (parseFloat(item.tax_rate) || 0) / 100) - (parseFloat(item.discount) || 0)) 
-                        / item.contributors.length
-                    ).toFixed(2)} per person</span>
-                  </div>
-                )}
-
-                {/* Middle Row 2: Category Levels */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50/50 dark:bg-dark-bg p-3 rounded-md">
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Category 1</label>
-                    <CategoryInput
-                      value={item.category_level_1}
-                      onChange={(value) => updateItem(item.id, 'category_level_1', value)}
-                      options={categoriesLevel1}
-                      placeholder="e.g. Food"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Category 2</label>
-                    <CategoryInput
-                      value={item.category_level_2}
-                      onChange={(value) => updateItem(item.id, 'category_level_2', value)}
-                      options={categoriesLevel2}
-                      placeholder="e.g. Dairy"
-                      disabled={!item.category_level_1}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Category 3</label>
-                    <CategoryInput
-                      value={item.category_level_3}
-                      onChange={(value) => updateItem(item.id, 'category_level_3', value)}
-                      options={categoriesLevel3}
-                      placeholder="e.g. Cheese"
-                      disabled={!item.category_level_2}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={items.map((i) => i.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {items.map((item) => (
+                <SortableItem
+                  key={item.id}
+                  item={item}
+                  purchase={purchase}
+                  updateItem={updateItem}
+                  deleteItem={deleteItem}
+                  allUsers={allUsers}
+                  categoriesLevel1={categoriesLevel1}
+                  categoriesLevel2={categoriesLevel2}
+                  categoriesLevel3={categoriesLevel3}
+                  user={user}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
       </section>
 

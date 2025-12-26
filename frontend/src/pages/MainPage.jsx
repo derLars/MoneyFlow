@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Scan, PlusCircle, Clock, ChevronRight, Receipt, Calendar } from 'lucide-react';
+import { Scan, PlusCircle, Clock, ChevronRight, Receipt, Calendar, TrendingUp } from 'lucide-react';
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 
@@ -8,32 +8,53 @@ const MainPage = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [recentPurchases, setRecentPurchases] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRecent = async () => {
+    const fetchData = async () => {
       try {
-        const response = await api.get('/purchases/recent');
-        setRecentPurchases(response.data);
+        const [recentRes, summaryRes] = await Promise.all([
+          api.get('/purchases/recent'),
+          api.get('/purchases/summary')
+        ]);
+        setRecentPurchases(recentRes.data);
+        setSummary(summaryRes.data);
       } catch (err) {
-        console.error('Failed to fetch recent purchases', err);
+        console.error('Failed to fetch dashboard data', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchRecent();
+    fetchData();
   }, []);
 
   const calculateTotal = (purchase) => {
+    if (!purchase.items) return "0.00";
     return purchase.items.reduce((acc, item) => acc + (item.price * item.quantity), 0).toFixed(2);
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-10 py-6">
+      {/* KPI Section */}
+      <section className="flex justify-center">
+        <div className="bg-white dark:bg-dark-surface p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border flex items-center gap-6 min-w-[300px]">
+          <div className="p-4 bg-blue-50 dark:bg-dark-primary/10 text-deep-blue dark:text-dark-primary rounded-2xl">
+            <TrendingUp size={32} />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-400 dark:text-dark-text-secondary uppercase tracking-wider">My Spending (This Month)</p>
+            <p className="text-4xl font-bold text-charcoal-gray dark:text-dark-text">
+              {loading ? "..." : `€${summary?.month_total?.toFixed(2) || "0.00"}`}
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Primary Action Hub */}
       <section className="text-center space-y-6">
         <h1 className="text-3xl font-bold text-charcoal-gray dark:text-dark-text">
-          What would you like to do?
+          Quick Actions
         </h1>
         <div className="flex flex-col sm:flex-row justify-center gap-6">
           <Link

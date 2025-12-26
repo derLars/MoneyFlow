@@ -31,7 +31,7 @@ export const getCategoriesByLevel = async (level) => {
 export const createCategory = async (categoryName, level) => {
   try {
     const response = await api.post(
-      `/categories/`,
+      `/categories`,
       { category_name: categoryName, level }
     );
     return response.data;

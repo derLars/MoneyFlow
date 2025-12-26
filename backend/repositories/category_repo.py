@@ -1,5 +1,11 @@
+import sys
+import os
+
+# Ensure the parent directory is in the path so we can import models/database etc
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from sqlalchemy.orm import Session
-from .. import models
+import models
 
 def create_category(db: Session, user_id: int, category_name: str, level: int):
     db_category = models.Category(user_id=user_id, category_name=category_name, level=level)

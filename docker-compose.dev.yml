@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: moneyflow-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: receiptdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"  # Expose for debugging if needed
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d receiptdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: moneyflow-backend-dev
+    ports:
+      - "8002:8002"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_TYPE=postgresql
+      - DATABASE_URL=postgresql://user:password@db:5432/receiptdb
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+    volumes:
+      # Mount source code for hot-reload
+      - ./backend:/app
+      # But keep data and images separate
+      - ./data:/app/data
+      - ./images:/app/images
+      - ./config.yaml:/app/config.yaml
+    command: sh -c "python3 migrate.py && python3 -m uvicorn main:app --host 0.0.0.0 --port 8002 --reload"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: moneyflow-frontend-dev
+    ports:
+      - "5173:5173"  # Vite dev server port
+    volumes:
+      # Mount source for hot-reload
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.js:/app/vite.config.js
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js
+      - ./frontend/postcss.config.js:/app/postcss.config.js
+      # Keep node_modules from container
+      - /app/node_modules
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:8002
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+
+volumes:
+  postgres_data:

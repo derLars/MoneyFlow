@@ -1,5 +1,11 @@
+import sys
+import os
+
+# Ensure the parent directory is in the path so we can import models/database etc
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from sqlalchemy.orm import Session
-from .. import models
+import models
 
 def create_user(db: Session, name: str, password_hash: str):
     db_user = models.User(name=name, password_hash=password_hash)

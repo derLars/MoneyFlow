@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from .. import models
+import models
 from collections import Counter
 
 def generate_all_substrings(text: str) -> List[str]:

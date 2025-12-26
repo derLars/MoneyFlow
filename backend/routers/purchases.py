@@ -1,29 +1,36 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
-from typing import List, Optional, Any
-import json
+import sys
 import os
-from pydantic import BaseModel, field_validator
+
+# Ensure the parent directory is in the path so we can import models/database etc
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import json
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import JSONResponse
+from typing import List, Optional
+from sqlalchemy.orm import Session
+import database
+import models
+import repositories.purchase_repo as purchase_repo
+import repositories.item_repo as item_repo
+import repositories.category_repo as category_repo
+import auth
+from pydantic import BaseModel
 from datetime import date
-from .. import database, auth, models, storage
-from ..repositories import purchase_repo, item_repo, user_repo
-from ..services import mapping_service
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
 
-# Pydantic schemas for request/response
 class ItemBase(BaseModel):
-    friendly_name: str
-    original_name: Optional[str] = ""
+    original_name: str
+    friendly_name: Optional[str] = None
+    category_level_1: Optional[str] = None
+    category_level_2: Optional[str] = None
+    category_level_3: Optional[str] = None
     quantity: int = 1
-    price: float
+    price: float = 0.0
     discount: float = 0.0
     tax_rate: float = 0.0
-    category_level_1: Optional[str] = ""
-    category_level_2: Optional[str] = ""
-    category_level_3: Optional[str] = ""
-    contributors: List[int] = []
+    contributors: List[int] = [] # list of user IDs
 
 class PurchaseCreate(BaseModel):
     purchase_name: str
@@ -33,191 +40,22 @@ class PurchaseCreate(BaseModel):
     discount_is_applied: bool = False
     items: List[ItemBase]
 
-class ItemResponse(BaseModel):
-    item_id: int
-    purchase_id: int
-    friendly_name: Optional[str] = None
-    original_name: Optional[str] = ""
-    quantity: int
-    price: float
-    discount: float = 0.0
-    tax_rate: float = 0.0
-    category_level_1: Optional[str] = ""
-    category_level_2: Optional[str] = ""
-    category_level_3: Optional[str] = ""
-    contributors: List[int] = []
-
-    @field_validator("contributors", mode="before")
-    @classmethod
-    def transform_contributors(cls, v: Any) -> List[int]:
-        if isinstance(v, list) and len(v) > 0 and not isinstance(v[0], int):
-            return [c.user_id for c in v]
-        return v
-
-    class Config:
-        from_attributes = True
-
-class ReceiptImageResponse(BaseModel):
-    image_id: int
-    file_path: str
-    original_filename: Optional[str] = None
-    url: Optional[str] = None
-
-    @field_validator("url", mode="before")
-    @classmethod
-    def generate_url(cls, v: Any, info: Any) -> str:
-        # This validator is a bit tricky for 'url' since it's not in the DB
-        # We'll populate it in the route
-        return v
-
-    class Config:
-        from_attributes = True
-
-class PurchaseResponse(BaseModel):
-    purchase_id: int
-    purchase_name: str
-    purchase_date: date
-    creator_user_id: int
-    payer_user_id: int
-    tax_is_added: bool
-    discount_is_applied: bool
-    items: List[ItemResponse]
-    images: List[ReceiptImageResponse] = []
-    class Config:
-        from_attributes = True
-
-@router.post("/", response_model=PurchaseResponse)
-async def create_purchase(
-    purchase_data: str = Form(...),
-    files: List[UploadFile] = File(None),
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    print(f"DEBUG: Received purchase_data: {purchase_data}")
-    try:
-        data_dict = json.loads(purchase_data)
-        purchase_in = PurchaseCreate(**data_dict)
-    except Exception as e:
-        print(f"DEBUG: JSON Parsing Error: {e}")
-        raise HTTPException(status_code=400, detail=f"Invalid purchase data format: {str(e)}")
-
-    try:
-        # 1. Create the purchase record
-        db_purchase = purchase_repo.create_purchase(
-            db,
-            creator_user_id=current_user.user_id,
-            payer_user_id=purchase_in.payer_user_id,
-            purchase_name=purchase_in.purchase_name,
-            purchase_date=purchase_in.purchase_date,
-            tax_is_added=purchase_in.tax_is_added,
-            discount_is_applied=purchase_in.discount_is_applied
-        )
-
-        # 2. Handle files
-        if files:
-            print(f"DEBUG: Handling {len(files)} uploaded files")
-            store = storage.get_storage()
-            import uuid
-            for file in files:
-                if not file.filename:
-                    continue
-                ext = os.path.splitext(file.filename)[1]
-                unique_filename = f"{uuid.uuid4()}{ext}"
-                store.upload_fileobj(file.file, unique_filename)
-                purchase_repo.create_receipt_image(
-                    db, 
-                    purchase_id=db_purchase.purchase_id,
-                    file_path=unique_filename,
-                original_filename=file.filename
-            )
-            print(f"DEBUG: Created ReceiptImage record for {unique_filename}")
-
-        # 3. Add items to the purchase
-        print(f"DEBUG: Starting to add {len(purchase_in.items)} items to purchase {db_purchase.purchase_id}")
-        for item_in in purchase_in.items:
-            db_item = item_repo.add_item_to_purchase(
-                db,
-                purchase_id=db_purchase.purchase_id,
-                original_name=item_in.original_name or item_in.friendly_name,
-                friendly_name=item_in.friendly_name,
-                quantity=item_in.quantity,
-                price=item_in.price,
-                discount=item_in.discount,
-                tax_rate=item_in.tax_rate,
-                category_level_1=item_in.category_level_1,
-                category_level_2=item_in.category_level_2,
-                category_level_3=item_in.category_level_3
-            )
-            print(f"DEBUG: Added item {db_item.item_id} ({db_item.friendly_name}) to purchase")
-
-        # Assign contributors
-        for user_id in item_in.contributors:
-            item_repo.add_contributor_to_item(db, item_id=db_item.item_id, user_id=user_id)
-
-        # Update Friendly Name Mapping logic (Section 6.11)
-        if item_in.friendly_name:
-            mapping_service.set_friendly_name(
-                db, 
-                original_name=item_in.original_name or item_in.friendly_name,
-                friendly_name=item_in.friendly_name,
-                user_id=current_user.user_id
-            )
-            print(f"DEBUG: Updated friendly name mapping for {item_in.friendly_name}")
-            
-    except Exception as e:
-        print(f"DEBUG: Database Error during creation or item/mapping processing: {e}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create purchase: {str(e)}")
-
-    print(f"DEBUG: Refreshing purchase {db_purchase.purchase_id} to load relationships")
-    # Refresh to get items, contributors and images
-    db.refresh(db_purchase)
-    
-    print(f"DEBUG: Populating URLs for {len(db_purchase.images)} images")
-    
-    # Populate URLs
-    store = storage.get_storage()
-    for img in db_purchase.images:
-        img.url = store.get_file_url(img.file_path)
-        
-    return db_purchase
-
-
-@router.put("/{purchase_id}", response_model=PurchaseResponse)
+@router.put("/{purchase_id}")
 async def update_purchase(
     purchase_id: int,
     purchase_in: PurchaseCreate,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # 1. Verify existence and permissions
     db_purchase = purchase_repo.get_purchase_by_id(db, purchase_id)
     if not db_purchase:
         raise HTTPException(status_code=404, detail="Purchase not found")
-    
-    is_authorized = (
-        current_user.administrator or
-        db_purchase.creator_user_id == current_user.user_id
-    )
-    if not is_authorized:
-        raise HTTPException(status_code=403, detail="Not authorized to update this purchase")
+        
+    # Permission check (Section 7)
+    if not current_user.administrator and db_purchase.creator_user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this purchase")
 
-    # 2. Extract existing state for diff-logging
-    # Create a complete snapshot of old items BEFORE any deletion to avoid lazy-load issues
-    old_items_snapshot = []
-    for item in db_purchase.items:
-        old_items_snapshot.append({
-            "friendly_name": item.friendly_name,
-            "original_name": item.original_name,
-            "price": float(item.price),
-            "quantity": item.quantity,
-            "category_level_1": item.category_level_1,
-            "category_level_2": item.category_level_2,
-            "category_level_3": item.category_level_3,
-            "contributors": sorted([int(c.user_id) for c in item.contributors])
-        })
-
-    # 3. Update metadata
+    # 1. Update Metadata
     purchase_repo.update_purchase(
         db,
         purchase_id=purchase_id,
@@ -228,51 +66,22 @@ async def update_purchase(
         discount_is_applied=purchase_in.discount_is_applied
     )
 
-    # 4. Handle Items: Delete existing items and recreate
-    # We MUST clear the relationship first to avoid constraint issues during deletion
-    for item in db_purchase.items:
-        db.query(models.Contributor).filter(models.Contributor.item_id == item.item_id).delete()
-        db.delete(item)
+    # 2. Update Items
+    # Simplified approach: Delete old items and add new ones to ensure sync
+    # Better approach for production: Diff and update
+    # Following Roadmap style for now
     
-    db.commit()
-
-    # 5. Re-add items and generate detailed logs
-    for idx, item_in in enumerate(purchase_in.items):
-        # Match by index using our pure Python snapshot
-        old_snapshot = old_items_snapshot[idx] if idx < len(old_items_snapshot) else None
-        
-        if old_snapshot:
-            item_name_for_log = old_snapshot["friendly_name"] or old_snapshot["original_name"]
-            
-            # 1. Categories
-            if old_snapshot["category_level_1"] != item_in.category_level_1:
-                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Category 1 for item {item_name_for_log} was changed from {old_snapshot['category_level_1'] or 'None'} to {item_in.category_level_1 or 'None'}")
-            if old_snapshot["category_level_2"] != item_in.category_level_2:
-                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Category 2 for item {item_name_for_log} was changed from {old_snapshot['category_level_2'] or 'None'} to {item_in.category_level_2 or 'None'}")
-            if old_snapshot["category_level_3"] != item_in.category_level_3:
-                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Category 3 for item {item_name_for_log} was changed from {old_snapshot['category_level_3'] or 'None'} to {item_in.category_level_3 or 'None'}")
-            
-            # 2. Quantity
-            if old_snapshot["quantity"] != item_in.quantity:
-                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Quantity for item {item_name_for_log} was changed from {old_snapshot['quantity']} to {item_in.quantity}")
-
-            # 3. Price
-            if old_snapshot["price"] != float(item_in.price):
-                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Price for item {item_name_for_log} was changed from {old_snapshot['price']} to {item_in.price}")
-            
-            # 4. Contributors - Now comparing pure integer lists
-            new_contributors = sorted([int(c) for c in item_in.contributors])
-            
-            if old_snapshot["contributors"] != new_contributors:
-                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Contributors for item {item_name_for_log} were updated")
-            
-            # 4. Name
-            if old_snapshot["friendly_name"] != item_in.friendly_name:
-                purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, f"Item name {old_snapshot['friendly_name'] or old_snapshot['original_name']} was renamed to {item_in.friendly_name}")
+    # Remove existing items and contributors
+    for old_item in db_purchase.items:
+        db.query(models.Contributor).filter(models.Contributor.item_id == old_item.item_id).delete()
+        db.delete(old_item)
+    
+    # Add new items
+    for item_in in purchase_in.items:
         db_item = item_repo.add_item_to_purchase(
             db,
             purchase_id=purchase_id,
-            original_name=item_in.original_name or item_in.friendly_name,
+            original_name=item_in.original_name,
             friendly_name=item_in.friendly_name,
             quantity=item_in.quantity,
             price=item_in.price,
@@ -282,147 +91,104 @@ async def update_purchase(
             category_level_2=item_in.category_level_2,
             category_level_3=item_in.category_level_3
         )
+        
+        # Add contributors
         for user_id in item_in.contributors:
             item_repo.add_contributor_to_item(db, item_id=db_item.item_id, user_id=user_id)
-        
-        # Update Mapping logic
+            
+        # Section 9.2: Storing Friendly Name Logic
         if item_in.friendly_name:
-            mapping_service.set_friendly_name(
-                db, 
-                original_name=item_in.original_name or item_in.friendly_name,
-                friendly_name=item_in.friendly_name,
-                user_id=current_user.user_id
-            )
+            from services import mapping_service
+            mapping_service.set_friendly_name(db, item_in.original_name, item_in.friendly_name, current_user.user_id)
 
-    db.refresh(db_purchase)
-    return db_purchase
+    # 3. Log Action
+    purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, "Purchase updated")
+    
+    db.commit()
+    return {"status": "success"}
 
-@router.get("/recent", response_model=List[PurchaseResponse])
-async def get_recent_purchases(
+@router.post("")
+async def create_purchase(
+    purchase_data: str = Form(...),
+    files: List[UploadFile] = File([]),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    purchases = purchase_repo.get_recent_purchases(db, user_id=current_user.user_id)
-    
-    # Populate URLs for images in each purchase
-    store = storage.get_storage()
-    for purchase in purchases:
-        for img in purchase.images:
-            img.url = store.get_file_url(img.file_path)
-    
-    return purchases
+    # Parse purchase_data from JSON string
+    try:
+        data_dict = json.loads(purchase_data)
+        # Validate using Pydantic model (manually since it's a string)
+        purchase_in = PurchaseCreate(**data_dict)
+    except Exception as e:
+        print(f"DEBUG: Purchase Data Validation Error: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid purchase data: {str(e)}")
 
-@router.delete("/{purchase_id}")
-async def delete_purchase(
-    purchase_id: int,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    db_purchase = purchase_repo.get_purchase_by_id(db, purchase_id)
-    if not db_purchase:
-        raise HTTPException(status_code=404, detail="Purchase not found")
-    
-    # Permission check (Section 7)
-    is_authorized = (
-        current_user.administrator or
-        db_purchase.creator_user_id == current_user.user_id
+    # 1. Create Purchase Metadata
+    db_purchase = purchase_repo.create_purchase(
+        db,
+        creator_user_id=current_user.user_id,
+        payer_user_id=purchase_in.payer_user_id,
+        purchase_name=purchase_in.purchase_name,
+        purchase_date=purchase_in.purchase_date,
+        tax_is_added=purchase_in.tax_is_added,
+        discount_is_applied=purchase_in.discount_is_applied
     )
-    if not is_authorized:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this purchase")
-    
-    purchase_repo.delete_purchase(db, purchase_id)
-    return {"status": "success"}
 
-class LogCreate(BaseModel):
-    message: str
+    # 1b. Handle Images
+    if files:
+        from storage import get_storage
+        store = get_storage()
+        for file in files:
+            try:
+                file_name = f"purchase_{db_purchase.purchase_id}_{file.filename}"
+                store.upload_fileobj(file.file, file_name)
+                purchase_repo.create_receipt_image(db, db_purchase.purchase_id, file_name, file.filename)
+            except Exception as e:
+                print(f"DEBUG: Failed to save image {file.filename}: {e}")
 
-@router.get("/{purchase_id}/logs", response_model=List[dict])
-async def get_purchase_logs(
-    purchase_id: int,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    db_purchase = purchase_repo.get_purchase_by_id(db, purchase_id)
-    if not db_purchase:
-        raise HTTPException(status_code=404, detail="Purchase not found")
-    
-    # Simple check: anyone who can view can see logs
-    logs = purchase_repo.get_logs_for_purchase(db, purchase_id)
-    return [{"id": l.log_id, "user_id": l.user_id, "message": l.log_message, "timestamp": l.timestamp} for l in logs]
-
-@router.post("/{purchase_id}/logs")
-async def add_purchase_log(
-    purchase_id: int,
-    log_in: LogCreate,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    purchase_repo.create_purchase_log(db, purchase_id=purchase_id, user_id=current_user.user_id, message=log_in.message)
-    return {"status": "success"}
-
-@router.get("/{purchase_id}", response_model=PurchaseResponse)
-async def get_purchase(
-    purchase_id: int,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    db_purchase = purchase_repo.get_purchase_by_id(db, purchase_id=purchase_id)
-    if not db_purchase:
-        raise HTTPException(status_code=404, detail="Purchase not found")
-    
-    # Permission check (Section 7)
-    is_authorized = (
-        current_user.administrator or
-        db_purchase.creator_user_id == current_user.user_id or
-        db_purchase.payer_user_id == current_user.user_id or
-        any(
-            any(c.user_id == current_user.user_id for c in item.contributors)
-            for item in db_purchase.items
+    # 2. Add Items and Contributors
+    for item_in in purchase_in.items:
+        db_item = item_repo.add_item_to_purchase(
+            db,
+            purchase_id=db_purchase.purchase_id,
+            original_name=item_in.original_name,
+            friendly_name=item_in.friendly_name,
+            quantity=item_in.quantity,
+            price=item_in.price,
+            discount=item_in.discount,
+            tax_rate=item_in.tax_rate,
+            category_level_1=item_in.category_level_1,
+            category_level_2=item_in.category_level_2,
+            category_level_3=item_in.category_level_3
         )
-    )
-    
-    if not is_authorized:
-        raise HTTPException(status_code=403, detail="Not authorized to view this purchase")
-    
-    # Populate URLs for images
-    store = storage.get_storage()
-    for img in db_purchase.images:
-        img.url = store.get_file_url(img.file_path)
         
-    return db_purchase
+        # Add contributors
+        for user_id in item_in.contributors:
+            item_repo.add_contributor_to_item(db, item_id=db_item.item_id, user_id=user_id)
+            
+        # Section 9.2: Storing Friendly Name Logic
+        if item_in.friendly_name:
+            from services import mapping_service
+            mapping_service.set_friendly_name(db, item_in.original_name, item_in.friendly_name, current_user.user_id)
 
-@router.get("/users/all")
-async def get_all_users(
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    users = user_repo.get_all_users(db)
-    return [{"user_id": u.user_id, "name": u.name} for u in users]
-
-@router.get("/", response_model=List[PurchaseResponse])
-async def list_purchases(
-    search: Optional[str] = None,
-    sort_by: str = "date_desc",
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    purchases = purchase_repo.get_purchases_for_user(
-        db, 
-        user_id=current_user.user_id, 
-        search=search, 
-        sort_by=sort_by
-    )
+    # 3. Log Action
+    purchase_repo.create_purchase_log(db, db_purchase.purchase_id, current_user.user_id, "Purchase created")
     
-    # Populate URLs for images in each purchase
-    store = storage.get_storage()
-    for purchase in purchases:
-        for img in purchase.images:
-            img.url = store.get_file_url(img.file_path)
-    
-    return purchases
+    # Return purchase data with explicit purchase_id using JSONResponse
+    response_data = {
+        "purchase_id": db_purchase.purchase_id,
+        "purchase_name": db_purchase.purchase_name,
+        "purchase_date": str(db_purchase.purchase_date),
+        "payer_user_id": db_purchase.payer_user_id,
+        "creator_user_id": db_purchase.creator_user_id,
+        "tax_is_added": db_purchase.tax_is_added,
+        "discount_is_applied": db_purchase.discount_is_applied
+    }
+    print(f"DEBUG: Returning purchase response: {response_data}")
+    return JSONResponse(content=response_data)
 
 @router.get("/stats/analytics")
-async def get_stats(
+async def get_analytics(
     time_frame: str = "year",
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
@@ -435,128 +201,278 @@ async def get_stats(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     purchases = purchase_repo.get_analytics_data(
-        db, 
-        user_id=current_user.user_id,
+        db, user_id=current_user.user_id,
         time_frame=time_frame,
         start_date=start_date,
         end_date=end_date,
         search=search,
         item_search=item_search,
-        cat1=cat1,
-        cat2=cat2,
-        cat3=cat3
+        cat1=cat1, cat2=cat2, cat3=cat3
     )
-
+    
+    # 1. Calculate Summary
     total_spending = 0
     num_purchases = len(purchases)
     
-    chart_data_map = {} # Aggregate by date
-    scatter_data = [] # Individual points
+    # 2. Prepare Chart & Scatter Data
+    # We want a list of { date: string, cost: number, purchases: [{name, cost}] }
+    # Grouped by date
+    daily_stats = {}
     
-    for p in purchases:
-        # Calculate cost for this specific purchase based on user's contribution
-        p_filtered_cost = 0
-        for item in p.items:
-            # Check if user is a contributor
-            is_contributor = any(c.user_id == current_user.user_id for c in item.contributors)
-            if not is_contributor:
-                continue
-
-            # If item_search is active, only count matching items
-            match_item = True
-            if item_search:
-                term = item_search.lower()
-                match_item = (term in (item.friendly_name or "").lower()) or (term in (item.original_name or "").lower())
-            
-            if match_item:
-                # Distribution is always equal (Section 10.1)
-                share = (item.price * item.quantity) / max(len(item.contributors), 1)
-                p_filtered_cost += share
-
-        total_spending += p_filtered_cost
-        
-        # Aggregate for Area chart
-        date_str = str(p.purchase_date)
-        if date_str not in chart_data_map:
-            chart_data_map[date_str] = {"date": date_str, "cost": 0, "purchases": []}
-        chart_data_map[date_str]["cost"] += p_filtered_cost
-        chart_data_map[date_str]["purchases"].append({
-            "name": p.purchase_name,
-            "cost": round(p_filtered_cost, 2)
-        })
-
-        # Individual points for Scatter plot
-        if p_filtered_cost > 0:
-            scatter_data.append({
-                "date": p.purchase_date,
-                "cost": round(p_filtered_cost, 2),
-                "name": p.purchase_name,
-                "id": p.purchase_id
-            })
-    
-    # Sort chart data by date
-    chart_data = sorted(chart_data_map.values(), key=lambda x: x["date"])
-    
-    avg_cost = total_spending / num_purchases if num_purchases > 0 else 0
-
-    # Build Sankey data (Section 15.3)
+    # 3. Prepare Sankey Data
+    # list of { source: string, target: string, value: number }
     sankey_links = []
-    # Using a dict to aggregate links between nodes
-    # Keys: (source, target), Value: cost
-    links_agg = {}
-
+    
     for p in purchases:
+        p_date = str(p.purchase_date)
+        if p_date not in daily_stats:
+            daily_stats[p_date] = {"date": p_date, "cost": 0, "purchases": []}
+        
+        p_total = 0
         for item in p.items:
-            # Check if user is a contributor
-            is_contributor = any(c.user_id == current_user.user_id for c in item.contributors)
-            if not is_contributor:
+            # Filter items if item_search or categories are provided
+            if item_search and item_search.lower() not in item.friendly_name.lower() and item_search.lower() not in item.original_name.lower():
                 continue
-            
-            # If item_search is active, only count matching items
-            match_item = True
-            if item_search:
-                term = item_search.lower()
-                match_item = (term in (item.friendly_name or "").lower()) or (term in (item.original_name or "").lower())
-            
-            if not match_item:
-                continue
+            if cat1 and item.category_level_1 != cat1: continue
+            if cat2 and item.category_level_2 != cat2: continue
+            if cat3 and item.category_level_3 != cat3: continue
 
-            share = (item.price * item.quantity) / max(len(item.contributors), 1)
+            item_cost = float(item.price) * item.quantity
+            p_total += item_cost
             
+            # Sankey logic
             c1 = item.category_level_1 or "Uncategorized"
             c2 = item.category_level_2 or "General"
-            c3 = item.category_level_3 or "Other"
-            friendly = item.friendly_name or item.original_name or "Unknown Item"
+            c3 = item.category_level_3 or "Misc"
+            iname = item.friendly_name or item.original_name
+            
+            # Level 1 to Level 2
+            sankey_links.append({"source": f"L1: {c1}", "target": f"L2: {c2}", "value": item_cost})
+            # Level 2 to Level 3
+            sankey_links.append({"source": f"L2: {c2}", "target": f"L3: {c3}", "value": item_cost})
+            # Level 3 to Item
+            sankey_links.append({"source": f"L3: {c3}", "target": f"Item: {iname}", "value": item_cost})
 
-            # Create hierarchical path to ensure uniqueness if needed, 
-            # but usually Sankey just needs source/target.
-            # We prefix levels to keep nodes distinct.
-            l1 = f"L1: {c1}"
-            l2 = f"L2: {c2}"
-            l3 = f"L3: {c3}"
-            l4 = f"Item: {friendly}"
+        total_spending += p_total
+        daily_stats[p_date]["cost"] += p_total
+        daily_stats[p_date]["purchases"].append({"name": p.purchase_name, "cost": p_total})
 
-            path = [(l1, l2), (l2, l3), (l3, l4)]
-            for source, target in path:
-                if (source, target) not in links_agg:
-                    links_agg[(source, target)] = 0
-                links_agg[(source, target)] += share
-
-    # Convert aggregated links to list format
-    for (source, target), value in links_agg.items():
-        sankey_links.append({
-            "source": source,
-            "target": target,
-            "value": round(value, 2)
-        })
-
+    # Aggregate Sankey links
+    aggregated_sankey = {}
+    for link in sankey_links:
+        key = (link["source"], link["target"])
+        aggregated_sankey[key] = aggregated_sankey.get(key, 0) + link["value"]
+    
+    final_sankey = [{"source": k[0], "target": k[1], "value": v} for k, v in aggregated_sankey.items()]
+    
+    chart_data = sorted(daily_stats.values(), key=lambda x: x["date"])
+    
+    avg_cost = total_spending / num_purchases if num_purchases > 0 else 0
+    
     return {
         "summary": {
-            "total_spending": round(total_spending, 2),
+            "total_spending": total_spending,
             "num_purchases": num_purchases,
-            "avg_cost": round(avg_cost, 2)
+            "avg_cost": avg_cost
         },
         "chart_data": chart_data,
-        "scatter_data": scatter_data,
-        "sankey_data": sankey_links
+        "sankey_data": final_sankey
     }
+
+@router.get("/summary")
+async def get_summary_stats(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # Fetch all purchases for the current month for this user
+    from datetime import datetime
+    today = datetime.now()
+    first_of_month = date(today.year, today.month, 1)
+    
+    # We use analytics logic to get purchases where the user is involved (creator, payer, or contributor)
+    purchases = purchase_repo.get_analytics_data(
+        db, user_id=current_user.user_id,
+        time_frame="custom",
+        start_date=str(first_of_month)
+    )
+    
+    personal_spending = 0
+    for p in purchases:
+        for item in p.items:
+            # Check if current user is a contributor to this item
+            is_contributor = any(c.user_id == current_user.user_id for c in item.contributors)
+            if is_contributor:
+                # Divide item total cost by number of contributors
+                num_contributors = len(item.contributors)
+                if num_contributors > 0:
+                    personal_spending += (float(item.price) * item.quantity) / num_contributors
+
+    return {
+        "month_total": personal_spending,
+        "num_purchases": len(purchases)
+    }
+
+@router.get("/recent")
+async def get_recent_purchases(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    purchases = purchase_repo.get_recent_purchases(db, user_id=current_user.user_id)
+    return [
+        {
+            "purchase_id": p.purchase_id,
+            "purchase_name": p.purchase_name,
+            "purchase_date": str(p.purchase_date),
+            "payer_user_id": p.payer_user_id,
+            "payer_name": p.payer.name if p.payer else "Deleted account",
+            "creator_user_id": p.creator_user_id,
+            "tax_is_added": p.tax_is_added,
+            "discount_is_applied": p.discount_is_applied,
+            "items": [
+                {
+                    "item_id": item.item_id,
+                    "original_name": item.original_name,
+                    "friendly_name": item.friendly_name,
+                    "quantity": item.quantity,
+                    "price": float(item.price),
+                    "discount": float(item.discount),
+                    "tax_rate": float(item.tax_rate),
+                    "category_level_1": item.category_level_1,
+                    "category_level_2": item.category_level_2,
+                    "category_level_3": item.category_level_3
+                }
+                for item in p.items
+            ]
+        }
+        for p in purchases
+    ]
+
+@router.get("/{purchase_id}")
+async def get_purchase(
+    purchase_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    purchase = purchase_repo.get_purchase_by_id(db, purchase_id)
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+        
+    # Check permissions (Section 7)
+    is_contributor = any(
+        any(c.user_id == current_user.user_id for c in item.contributors)
+        for item in purchase.items
+    )
+    if not current_user.administrator and \
+       purchase.creator_user_id != current_user.user_id and \
+       purchase.payer_user_id != current_user.user_id and \
+       not is_contributor:
+        raise HTTPException(status_code=403, detail="Not authorized to view this purchase")
+    
+    # Serialize purchase with properly formatted images
+    from storage import get_storage
+    storage_interface = get_storage()
+    
+    return {
+        "purchase_id": purchase.purchase_id,
+        "purchase_name": purchase.purchase_name,
+        "purchase_date": str(purchase.purchase_date),
+        "payer_user_id": purchase.payer_user_id,
+        "creator_user_id": purchase.creator_user_id,
+        "tax_is_added": purchase.tax_is_added,
+        "discount_is_applied": purchase.discount_is_applied,
+        "images": [
+            {
+                "url": storage_interface.get_file_url(img.file_path),
+                "file_path": img.file_path,
+                "original_filename": img.original_filename
+            }
+            for img in purchase.images
+        ],
+        "items": [
+            {
+                "item_id": item.item_id,
+                "original_name": item.original_name,
+                "friendly_name": item.friendly_name,
+                "quantity": item.quantity,
+                "price": float(item.price),
+                "discount": float(item.discount),
+                "tax_rate": float(item.tax_rate),
+                "category_level_1": item.category_level_1,
+                "category_level_2": item.category_level_2,
+                "category_level_3": item.category_level_3,
+                "contributors": [c.user_id for c in item.contributors]
+            }
+            for item in purchase.items
+        ]
+    }
+
+@router.delete("/{purchase_id}")
+async def delete_purchase(
+    purchase_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    purchase = purchase_repo.get_purchase_by_id(db, purchase_id)
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+        
+    # Permission check for deletion
+    if not current_user.administrator and purchase.creator_user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Only the creator or admin can delete a purchase")
+        
+    purchase_repo.delete_purchase(db, purchase_id)
+    return {"status": "success"}
+
+@router.post("/{purchase_id}/logs")
+async def create_log(
+    purchase_id: int,
+    data: dict,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, data.get("message", "Action logged"))
+
+@router.get("/{purchase_id}/logs")
+async def get_logs(
+    purchase_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return purchase_repo.get_logs_for_purchase(db, purchase_id)
+
+@router.get("")
+async def list_purchases(
+    search: Optional[str] = None,
+    sort_by: str = "date_desc",
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    purchases = purchase_repo.get_purchases_for_user(db, user_id=current_user.user_id, search=search, sort_by=sort_by)
+    return [
+        {
+            "purchase_id": p.purchase_id,
+            "purchase_name": p.purchase_name,
+            "purchase_date": str(p.purchase_date),
+            "payer_user_id": p.payer_user_id,
+            "payer_name": p.payer.name if p.payer else "Deleted account",
+            "creator_user_id": p.creator_user_id,
+            "tax_is_added": p.tax_is_added,
+            "discount_is_applied": p.discount_is_applied,
+            "items": [
+                {
+                    "item_id": item.item_id,
+                    "original_name": item.original_name,
+                    "friendly_name": item.friendly_name,
+                    "quantity": item.quantity,
+                    "price": float(item.price),
+                    "discount": float(item.discount),
+                    "tax_rate": float(item.tax_rate),
+                    "category_level_1": item.category_level_1,
+                    "category_level_2": item.category_level_2,
+                    "category_level_3": item.category_level_3
+                }
+                for item in p.items
+            ]
+        }
+        for p in purchases
+    ]

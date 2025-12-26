@@ -32,7 +32,7 @@
 - [x] Friendly Name Mapping Service.
 - [x] Purchase Editor UI (Metadata & Item List).
 - [x] Form Submission & Validation Logic.
-- [ ] Main Page (Action Hub & Recent Activity).
+- [x] Main Page (Action Hub & Recent Activity).
 
 ### Phase 5: Receipt Scanning
 - [x] Image Processing Service (OpenCV/OCR).

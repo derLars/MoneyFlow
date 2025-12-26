@@ -25,7 +25,7 @@ const MoneyFlowPage = () => {
     try {
       const [balRes, payRes, userRes] = await Promise.all([
         api.get('/payments/balances'),
-        api.get('/payments/'),
+        api.get('/payments'),
         api.get('/purchases/users/all')
       ]);
       setBalances(balRes.data);
@@ -53,7 +53,7 @@ const MoneyFlowPage = () => {
     }
 
     try {
-      await api.post('/payments/', {
+      await api.post('/payments', {
         ...newPayment,
         payer_user_id: parseInt(newPayment.payer_user_id),
         receiver_user_id: parseInt(newPayment.receiver_user_id),

@@ -1,6 +1,12 @@
+import sys
+import os
+
+# Ensure the parent directory is in the path so we can import models/database etc
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from sqlalchemy.orm import Session
-from .. import models
-from . import user_repo
+import models
+import repositories.user_repo as user_repo
 
 def create_payment(db: Session, creator_user_id: int, payer_user_id: int, receiver_user_id: int, 
                    amount: float, payment_date, note: str = None):

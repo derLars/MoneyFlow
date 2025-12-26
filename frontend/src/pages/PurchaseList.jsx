@@ -13,7 +13,7 @@ const PurchaseList = () => {
     const fetchPurchases = async () => {
       setLoading(true);
       try {
-        const response = await api.get('/purchases/', {
+        const response = await api.get('/purchases', {
           params: { search, sort_by: sortBy }
         });
         setPurchases(response.data);
@@ -32,6 +32,7 @@ const PurchaseList = () => {
   }, [search, sortBy]);
 
   const calculateTotal = (purchase) => {
+    if (!purchase.items) return "0.00";
     return purchase.items.reduce((acc, item) => acc + (item.price * item.quantity), 0).toFixed(2);
   };
 
@@ -120,7 +121,7 @@ const PurchaseList = () => {
               <div className="px-5 py-3 bg-gray-50 dark:bg-dark-surface-hover border-t border-gray-100 dark:border-dark-border flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-dark-text-secondary">
                   <User size={14} className="text-gray-400 dark:text-dark-text-secondary" />
-                  <span>Paid by <span className="text-charcoal-gray dark:text-dark-text font-bold">Payer {p.payer_user_id}</span></span>
+                  <span>Paid by <span className="text-charcoal-gray dark:text-dark-text font-bold">{p.payer_name || 'Deleted account'}</span></span>
                 </div>
                 <ChevronRight size={16} className="text-gray-300 dark:text-dark-text-secondary group-hover:text-deep-blue dark:group-hover:text-dark-primary transition" />
               </div>

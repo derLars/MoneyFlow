@@ -49,7 +49,7 @@ class LocalStorage(StorageInterface):
         return f"http://127.0.0.1:8002/api/purchases/images/{file_name}"
 
 def get_storage():
-    from backend.database import config
+    from database import config
     storage_config = config.get("storage", {})
     
     # Check for 'local' settings specifically as per Section 13

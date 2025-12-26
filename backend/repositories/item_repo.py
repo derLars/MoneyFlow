@@ -1,5 +1,11 @@
+import sys
+import os
+
+# Ensure the parent directory is in the path so we can import models/database etc
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from sqlalchemy.orm import Session
-from .. import models
+import models
 
 def add_item_to_purchase(db: Session, purchase_id: int, original_name: str, 
                          friendly_name: str = None, quantity: int = 1, price: float = 0.0, 

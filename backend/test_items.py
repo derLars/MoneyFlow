@@ -1,4 +1,8 @@
-from backend.database import SessionLocal, create_user, create_purchase, add_item_to_purchase, add_contributor_to_item
+from backend.database import SessionLocal
+from backend.repositories import user_repo
+from backend.repositories.user_repo import create_user
+from backend.repositories.purchase_repo import create_purchase
+from backend.repositories.item_repo import add_item_to_purchase, add_contributor_to_item
 from backend.services import mapping_service
 from datetime import date
 
@@ -6,7 +10,11 @@ def test_items_and_mapping():
     db = SessionLocal()
     try:
         # 1. Setup User and Purchase
-        user = create_user(db, name="item_test_user", password_hash="hash")
+        username = "item_test_user"
+        user = user_repo.get_user_by_name(db, username)
+        if not user:
+            user = create_user(db, name=username, password_hash="hash")
+        
         purchase = create_purchase(db, creator_user_id=user.user_id, payer_user_id=user.user_id, 
                                    purchase_name="Mapping Test", purchase_date=date.today())
         

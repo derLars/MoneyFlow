@@ -1,7 +1,14 @@
 from datetime import datetime
 from sqlalchemy import or_, extract
+from sqlalchemy.orm import joinedload
+import sys
+import os
+
+# Ensure the parent directory is in the path so we can import models/database etc
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from sqlalchemy.orm import Session
-from .. import models
+import models
 
 def create_purchase(db: Session, creator_user_id: int, payer_user_id: int, 
                     purchase_name: str, purchase_date, 
@@ -80,7 +87,7 @@ def get_recent_purchases(db: Session, user_id: int, limit: int = 5):
     Section 9.4.2: Retrieves the most recent purchases for a specific user.
     A user is related if they are the creator, the payer or a contributor.
     """
-    return db.query(models.Purchase).filter(
+    return db.query(models.Purchase).options(joinedload(models.Purchase.items)).filter(
         (models.Purchase.creator_user_id == user_id) |
         (models.Purchase.payer_user_id == user_id) |
         (models.Purchase.purchase_id.in_(
@@ -95,7 +102,7 @@ def get_purchases_for_user(db: Session, user_id: int, search: str = None, sort_b
     Enhanced Search: Includes items and categories.
     """
     # Use distinct to avoid duplicate purchases when multiple items match
-    query = db.query(models.Purchase).distinct().join(models.Item, isouter=True)
+    query = db.query(models.Purchase).options(joinedload(models.Purchase.items)).distinct().join(models.Item, isouter=True)
     
     # Base authorization filter
     query = query.filter(

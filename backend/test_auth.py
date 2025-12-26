@@ -1,7 +1,8 @@
 import requests
 import time
 import subprocess
-from backend.database import SessionLocal, create_user, get_user_by_name
+from backend.database import SessionLocal
+from backend.repositories.user_repo import create_user, get_user_by_name
 from backend.auth import get_password_hash
 
 def test_auth_workflow():
@@ -20,7 +21,7 @@ def test_auth_workflow():
         
         # 2. Start the server
         proc = subprocess.Popen(
-            ["venv/bin/python3", "-m", "uvicorn", "backend.main:app", "--host", "127.0.0.1", "--port", "8000"],
+            ["venv/bin/python3", "-m", "uvicorn", "backend.main:app", "--host", "127.0.0.1", "--port", "8002"],
             env={"PYTHONPATH": "."}
         )
         time.sleep(3) # Wait for server to start
@@ -29,7 +30,7 @@ def test_auth_workflow():
             # 3. Test Login (Success)
             print("Testing login with correct credentials...")
             response = requests.post(
-                "http://127.0.0.1:8000/auth/token",
+                "http://127.0.0.1:8002/api/auth/token",
                 data={"username": username, "password": password}
             )
             assert response.status_code == 200
@@ -39,7 +40,7 @@ def test_auth_workflow():
             # 4. Test Login (Failure)
             print("Testing login with wrong password...")
             response = requests.post(
-                "http://127.0.0.1:8000/auth/token",
+                "http://127.0.0.1:8002/api/auth/token",
                 data={"username": username, "password": "wrong_password"}
             )
             assert response.status_code == 401
@@ -48,7 +49,7 @@ def test_auth_workflow():
             # 5. Test Protected Endpoint
             print("Testing protected endpoint /auth/me...")
             response = requests.get(
-                "http://127.0.0.1:8000/auth/me",
+                "http://127.0.0.1:8002/api/auth/me",
                 headers={"Authorization": f"Bearer {token}"}
             )
             assert response.status_code == 200

@@ -1,4 +1,5 @@
-from backend.database import SessionLocal, engine, Base
+from backend.database import SessionLocal, engine
+from backend.db_base import Base
 
 def test_db_connection():
     try:

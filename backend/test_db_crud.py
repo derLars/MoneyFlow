@@ -1,4 +1,6 @@
-from backend.database import SessionLocal, create_user, get_user_by_name, create_purchase, get_purchase_by_id
+from backend.database import SessionLocal
+from backend.repositories.user_repo import create_user, get_user_by_name
+from backend.repositories.purchase_repo import create_purchase, get_purchase_by_id
 from datetime import date
 
 def test_db_crud():
