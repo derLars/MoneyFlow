@@ -248,8 +248,9 @@ cat <<'MOTD' > /etc/motd
 
 Welcome to Moneyflow LXC Container!
 -----------------------------------
-- Web Interface: http://\$(hostname -I | awk '{print \$1}')
 - Application Directory: /root/moneyflow
+>>>>+++ REPLACE
+
 
 Maintenance Commands:
 - Reset Admin Password:
