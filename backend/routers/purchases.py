@@ -237,7 +237,7 @@ async def get_analytics(
             if cat2 and item.category_level_2 != cat2: continue
             if cat3 and item.category_level_3 != cat3: continue
 
-            item_cost = float(item.price) * item.quantity
+            item_cost = (float(item.price) * item.quantity) - float(item.discount)
             p_total += item_cost
             
             # Sankey logic
@@ -305,7 +305,7 @@ async def get_summary_stats(
                 # Divide item total cost by number of contributors
                 num_contributors = len(item.contributors)
                 if num_contributors > 0:
-                    personal_spending += (float(item.price) * item.quantity) / num_contributors
+                    personal_spending += ((float(item.price) * item.quantity) - float(item.discount)) / num_contributors
 
     return {
         "month_total": personal_spending,
