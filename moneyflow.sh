@@ -136,10 +136,8 @@ TEMPLATE_PATH="$TEMPLATE_STORAGE:vztmpl/$TEMPLATE_FILENAME"
 info "Checking for template $TEMPLATE_FILENAME in $TEMPLATE_STORAGE..."
 if ! pveam list $TEMPLATE_STORAGE | grep -q "$TEMPLATE_FILENAME"; then
     info "Downloading template: $TEMPLATE"
-    pveam download $TEMPLATE_STORAGE "$TEMPLATE"
+    pveam download "$TEMPLATE_STORAGE" "$TEMPLATE"
 fi
->>>>+++ REPLACE
-
 
 info "Creating LXC container $CT_ID ($CT_NAME)..."
 pct create $CT_ID "$TEMPLATE_PATH" \
