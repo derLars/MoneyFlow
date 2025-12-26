@@ -44,6 +44,8 @@ If you prefer running Moneyflow as a standard Docker stack:
     SECRET_KEY=your_random_secret_hex
     MISTRAL_API_KEY=your_mistral_key
     ```
+    *(Note: `SECRET_KEY` is required for secure authentication. You can generate one using `openssl rand -hex 32`)*.
+
 3.  **Launch**:
     ```bash
     docker compose up -d --build
@@ -61,7 +63,7 @@ Once installed, access the web interface at:
 `http://<your-server-ip>`
 
 *   **Default Admin**: `admin` / (password you set during installation)
-*   **Port Config**: Backend runs on `8002`, Frontend on `80`.
+*   **Network Ports**: The application is served on port **80** (mapped to 8080 inside the container for compatibility with unprivileged environments). The backend API runs on port **8002**.
 
 ---
 
