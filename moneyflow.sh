@@ -134,7 +134,7 @@ TEMPLATE_FILENAME=$(basename "$TEMPLATE")
 TEMPLATE_PATH="$TEMPLATE_STORAGE:vztmpl/$TEMPLATE_FILENAME"
 
 info "Checking for template $TEMPLATE_FILENAME in $TEMPLATE_STORAGE..."
-if ! pveam list $TEMPLATE_STORAGE | grep -q "$TEMPLATE_FILENAME"; then
+if ! pveam list "$TEMPLATE_STORAGE" | grep -q "$TEMPLATE_FILENAME"; then
     info "Downloading template: $TEMPLATE"
     pveam download "$TEMPLATE_STORAGE" "$TEMPLATE"
 fi
@@ -153,6 +153,18 @@ pct create $CT_ID "$TEMPLATE_PATH" \
     $PROXY_FLAG \
     --features nesting=1 \
     --description "Moneyflow - Expense Tracker"
+
+# Apply sysctl fix for unprivileged Docker before starting
+if [ "$UNPRIV" == "y" ]; then
+    info "Applying sysctl fix for unprivileged Docker..."
+    # Note: We can't always set sysctl inside unprivileged LXC, 
+    # but we can try to ensure the container config allows it if possible, 
+    # or rely on our port 8080 mapping fix which is more reliable.
+    # The error "open sysctl net.ipv4.ip_unprivileged_port_start file: permission denied"
+    # often happens when Docker tries to configure the kernel.
+    # We will also add a config entry to the LXC to ignore this if needed.
+    echo "lxc.apparmor.profile: unconfined" >> /etc/pve/lxc/$CT_ID.conf
+fi
 
 info "Starting container..."
 pct start $CT_ID
