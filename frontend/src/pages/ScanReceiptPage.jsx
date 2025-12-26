@@ -1,78 +1,39 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, X, RotateCw, Crop, Loader2, Check, RotateCcw } from 'lucide-react';
-import Cropper from 'react-easy-crop';
+import Cropper from 'react-cropper';
+import 'cropperjs/dist/cropper.css';
 import api from '../api/axios';
 
 const ImageEditorModal = ({ image, onSave, onCancel }) => {
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
+  const [cropper, setCropper] = useState(null);
   const [rotation, setRotation] = useState(image.rotation || 0);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [zoom, setZoom] = useState(1); // 1 is default zoom
 
-  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
+  // Apply rotation when slider changes
+  useEffect(() => {
+    if (cropper) {
+      cropper.rotateTo(rotation);
+    }
+  }, [rotation, cropper]);
 
-  const createImage = (url) =>
-    new Promise((resolve, reject) => {
-      const image = new Image();
-      image.addEventListener('load', () => resolve(image));
-      image.addEventListener('error', (error) => reject(error));
-      image.setAttribute('crossOrigin', 'anonymous');
-      image.src = url;
-    });
+  // Apply zoom when slider changes
+  useEffect(() => {
+    if (cropper) {
+      cropper.zoomTo(zoom);
+    }
+  }, [zoom, cropper]);
 
-  const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0) => {
-    const image = await createImage(imageSrc);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    const rotRad = (rotation * Math.PI) / 180;
-    const { width: bWidth, height: bHeight } = {
-      width: Math.abs(Math.cos(rotRad) * image.width) + Math.abs(Math.sin(rotRad) * image.height),
-      height: Math.abs(Math.sin(rotRad) * image.width) + Math.abs(Math.cos(rotRad) * image.height),
-    };
-
-    canvas.width = bWidth;
-    canvas.height = bHeight;
-
-    ctx.translate(bWidth / 2, bHeight / 2);
-    ctx.rotate(rotRad);
-    ctx.translate(-image.width / 2, -image.height / 2);
-    ctx.drawImage(image, 0, 0);
-
-    const data = ctx.getImageData(
-      pixelCrop.x,
-      pixelCrop.y,
-      pixelCrop.width,
-      pixelCrop.height
-    );
-
-    canvas.width = pixelCrop.width;
-    canvas.height = pixelCrop.height;
-    ctx.putImageData(data, 0, 0);
-
-    return new Promise((resolve) => {
-      canvas.toBlob((file) => {
-        resolve({
-          blob: file,
-          url: URL.createObjectURL(file)
-        });
+  const handleSave = () => {
+    if (cropper) {
+      cropper.getCroppedCanvas().toBlob((blob) => {
+        if (!blob) {
+            console.error('Canvas is empty');
+            return;
+        }
+        const url = URL.createObjectURL(blob);
+        onSave({ blob, url }, rotation);
       }, 'image/jpeg');
-    });
-  };
-
-  const handleSave = async () => {
-    try {
-      const croppedImage = await getCroppedImg(
-        image.preview,
-        croppedAreaPixels,
-        rotation
-      );
-      onSave(croppedImage, rotation);
-    } catch (e) {
-      console.error(e);
     }
   };
 
@@ -86,17 +47,25 @@ const ImageEditorModal = ({ image, onSave, onCancel }) => {
           </button>
         </div>
 
-        <div className="flex-1 relative bg-background">
+        <div className="flex-1 relative bg-black overflow-hidden" style={{ minHeight: '400px' }}>
           <Cropper
-            image={image.preview}
-            crop={crop}
-            zoom={zoom}
-            rotation={rotation}
-            aspect={undefined}
-            onCropChange={setCrop}
-            onRotationChange={setRotation}
-            onCropComplete={onCropComplete}
-            onZoomChange={setZoom}
+            src={image.preview}
+            style={{ height: '100%', width: '100%' }}
+            // Cropper.js options
+            guides={true}
+            onInitialized={(instance) => {
+              setCropper(instance);
+            }}
+            viewMode={1}
+            dragMode="crop" // Allows drawing box
+            zoomable={true}
+            zoomOnTouch={false} // Disable gesture zoom
+            zoomOnWheel={false} // Disable wheel zoom
+            rotatable={true}
+            scalable={true}
+            background={false}
+            autoCropArea={0.8}
+            checkOrientation={false}
           />
         </div>
 
@@ -136,7 +105,7 @@ const ImageEditorModal = ({ image, onSave, onCancel }) => {
             <label className="text-sm font-medium text-white">Zoom</label>
             <input
               type="range"
-              min="1"
+              min="0.1"
               max="3"
               step="0.1"
               value={zoom}

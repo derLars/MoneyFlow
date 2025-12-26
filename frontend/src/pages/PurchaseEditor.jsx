@@ -316,6 +316,7 @@ const PurchaseEditor = () => {
       const itemsArray = Array.isArray(extractedData) ? extractedData : (extractedData.items || []);
       const mappedItems = itemsArray.map((item, index) => ({
         id: Date.now() + index,
+        original_name: item.extracted_name || item.original_name || '',
         friendly_name: item.friendly_name || item.extracted_name || '',
         quantity: item.quantity || 1,
         price: item.price || 0,
