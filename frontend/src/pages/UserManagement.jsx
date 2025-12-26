@@ -4,12 +4,9 @@ import {
   Shield, 
   ShieldOff, 
   Trash2, 
-  MoreVertical, 
   X, 
   AlertTriangle,
   Loader2,
-  Check,
-  Plus,
   UserPlus
 } from 'lucide-react';
 import api from '../api/axios';
@@ -129,18 +126,18 @@ const UserManagement = () => {
     <div className="max-w-6xl mx-auto py-8 px-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-deep-blue dark:bg-dark-primary rounded-xl flex items-center justify-center text-white shadow-lg">
+          <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
             <Users size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-charcoal-gray dark:text-dark-text">User Management</h1>
-            <p className="text-sm text-gray-400 dark:text-dark-text-secondary font-medium">Manage permissions and system access</p>
+            <h1 className="text-3xl font-bold text-white">User Management</h1>
+            <p className="text-sm text-secondary font-medium">Manage permissions and system access</p>
           </div>
         </div>
 
         <button 
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-deep-blue dark:bg-dark-primary text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition active:scale-95"
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition active:scale-95"
         >
           <UserPlus size={20} />
           Add User
@@ -150,34 +147,34 @@ const UserManagement = () => {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-40 bg-white/50 dark:bg-dark-surface/50 rounded-2xl animate-pulse border border-gray-100 dark:border-dark-border shadow-sm"></div>
+            <div key={i} className="h-40 bg-surface rounded-3xl animate-pulse border border-white/5 shadow-sm"></div>
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {users.map((user) => (
-            <div key={user.user_id} className="bg-white dark:bg-dark-surface rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-dark-border hover:shadow-md transition group">
+            <div key={user.user_id} className="bg-surface rounded-3xl p-6 shadow-sm border border-white/5 hover:border-primary/20 transition group">
               <div className="flex justify-between items-start mb-6">
-                <div className="w-12 h-12 bg-light-gray dark:bg-dark-bg rounded-full flex items-center justify-center text-charcoal-gray dark:text-dark-text font-bold text-lg">
+                <div className="w-12 h-12 bg-background rounded-full flex items-center justify-center text-white font-bold text-lg">
                   {user.name.substring(0, 1).toUpperCase()}
                 </div>
                 {user.administrator ? (
-                  <span className="px-3 py-1 bg-blue-50 dark:bg-dark-primary/20 text-deep-blue dark:text-dark-primary text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1.5 border border-blue-100 dark:border-dark-primary/30">
+                  <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1.5 border border-primary/20">
                     <Shield size={12} />
                     Admin
                   </span>
                 ) : (
-                  <span className="px-3 py-1 bg-gray-50 dark:bg-dark-surface-hover text-gray-400 dark:text-dark-text-secondary text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1.5 border border-gray-100 dark:border-dark-border">
+                  <span className="px-3 py-1 bg-background text-secondary text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1.5 border border-white/5">
                     User
                   </span>
                 )}
               </div>
               
-              <h3 className="text-xl font-bold text-charcoal-gray dark:text-dark-text mb-6 truncate">{user.name}</h3>
+              <h3 className="text-xl font-bold text-white mb-6 truncate">{user.name}</h3>
               
               <button 
                 onClick={() => openManageModal(user)}
-                className="w-full py-2.5 bg-light-gray dark:bg-dark-bg text-charcoal-gray dark:text-dark-text font-bold text-sm rounded-xl hover:bg-deep-blue dark:hover:bg-dark-primary hover:text-white transition active:scale-95"
+                className="w-full py-2.5 bg-background text-white font-bold text-sm rounded-xl hover:bg-primary hover:text-white transition active:scale-95"
               >
                 Manage User
               </button>
@@ -188,20 +185,20 @@ const UserManagement = () => {
 
       {/* Add User Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal-gray/20 backdrop-blur-sm">
-          <div className="bg-white dark:bg-dark-surface w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-transparent dark:border-dark-border">
-            <div className="p-6 border-b border-gray-50 dark:border-dark-border flex items-center justify-between">
-              <h2 className="text-xl font-bold text-charcoal-gray dark:text-dark-text">Create New Account</h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 dark:text-dark-text-secondary hover:text-charcoal-gray dark:hover:text-dark-text transition"><X /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-white/5">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">Create New Account</h2>
+              <button onClick={() => setIsAddModalOpen(false)} className="text-secondary hover:text-white transition"><X /></button>
             </div>
 
             <form onSubmit={handleAddUser} className="p-8 space-y-6">
               <div>
-                <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-2">User Name</label>
+                <label className="block text-[10px] uppercase tracking-wider font-bold text-secondary mb-2">User Name</label>
                 <input
                   type="text"
                   required
-                  className="w-full p-4 bg-light-gray dark:bg-dark-bg rounded-2xl outline-none focus:ring-2 focus:ring-deep-blue dark:focus:ring-dark-primary border-none text-charcoal-gray dark:text-dark-text"
+                  className="w-full p-4 bg-background rounded-2xl outline-none focus:ring-2 focus:ring-primary border-none text-white"
                   placeholder="Enter unique name..."
                   value={newUser.name}
                   onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
@@ -209,11 +206,11 @@ const UserManagement = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-2">Preliminary Password</label>
+                <label className="block text-[10px] uppercase tracking-wider font-bold text-secondary mb-2">Preliminary Password</label>
                 <input
                   type="password"
                   required
-                  className="w-full p-4 bg-light-gray dark:bg-dark-bg rounded-2xl outline-none focus:ring-2 focus:ring-deep-blue dark:focus:ring-dark-primary border-none text-charcoal-gray dark:text-dark-text"
+                  className="w-full p-4 bg-background rounded-2xl outline-none focus:ring-2 focus:ring-primary border-none text-white"
                   placeholder="Enter initial password..."
                   value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
@@ -224,7 +221,7 @@ const UserManagement = () => {
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="w-full py-4 bg-deep-blue dark:bg-dark-primary text-white rounded-2xl font-bold shadow-lg hover:opacity-90 transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-lg hover:opacity-90 transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {actionLoading ? <Loader2 className="animate-spin" size={20} /> : 'Create User'}
                 </button>
@@ -236,21 +233,21 @@ const UserManagement = () => {
 
       {/* Management Modal */}
       {isModalOpen && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal-gray/20 backdrop-blur-sm">
-          <div className="bg-white dark:bg-dark-surface w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-transparent dark:border-dark-border">
-            <div className="p-6 border-b border-gray-50 dark:border-dark-border flex items-center justify-between">
-              <h2 className="text-xl font-bold text-charcoal-gray dark:text-dark-text">Manage Account</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 dark:text-dark-text-secondary hover:text-charcoal-gray dark:hover:text-dark-text transition"><X /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-white/5">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">Manage Account</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-secondary hover:text-white transition"><X /></button>
             </div>
 
             <div className="p-8">
-              <div className="flex items-center gap-4 mb-8 p-4 bg-gray-50 dark:bg-dark-surface-hover rounded-2xl">
-                <div className="w-14 h-14 bg-white dark:bg-dark-bg rounded-full flex items-center justify-center text-xl font-bold border border-gray-100 dark:border-dark-border text-charcoal-gray dark:text-dark-text">
+              <div className="flex items-center gap-4 mb-8 p-4 bg-background rounded-2xl">
+                <div className="w-14 h-14 bg-surface rounded-full flex items-center justify-center text-xl font-bold border border-white/5 text-white">
                   {selectedUser.name.substring(0, 1).toUpperCase()}
                 </div>
                 <div>
-                  <p className="text-lg font-bold text-charcoal-gray dark:text-dark-text leading-tight">{selectedUser.name}</p>
-                  <p className="text-xs text-gray-400 dark:text-dark-text-secondary font-bold uppercase tracking-wider">ID: {selectedUser.user_id}</p>
+                  <p className="text-lg font-bold text-white leading-tight">{selectedUser.name}</p>
+                  <p className="text-xs text-secondary font-bold uppercase tracking-wider">ID: {selectedUser.user_id}</p>
                 </div>
               </div>
 
@@ -262,39 +259,39 @@ const UserManagement = () => {
                     className={`
                       w-full p-4 rounded-2xl flex items-center gap-4 transition group border-2
                       ${selectedUser.administrator 
-                        ? 'border-gray-100 dark:border-dark-border hover:border-alert-red dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' 
-                        : 'border-gray-100 dark:border-dark-border hover:border-deep-blue dark:hover:border-dark-primary hover:bg-blue-50 dark:hover:bg-dark-primary/20'}
+                        ? 'border-white/5 hover:border-error hover:bg-error/10' 
+                        : 'border-white/5 hover:border-primary hover:bg-primary/10'}
                     `}
                   >
                     <div className={`
                       w-10 h-10 rounded-xl flex items-center justify-center
-                      ${selectedUser.administrator ? 'bg-gray-100 dark:bg-dark-bg text-gray-400 dark:text-dark-text-secondary group-hover:bg-alert-red dark:group-hover:bg-red-600 group-hover:text-white' : 'bg-gray-100 dark:bg-dark-bg text-gray-400 dark:text-dark-text-secondary group-hover:bg-deep-blue dark:group-hover:bg-dark-primary group-hover:text-white'}
+                      ${selectedUser.administrator ? 'bg-background text-secondary group-hover:bg-error group-hover:text-white' : 'bg-background text-secondary group-hover:bg-primary group-hover:text-white'}
                     `}>
                       {selectedUser.administrator ? <ShieldOff size={20} /> : <Shield size={20} />}
                     </div>
                     <div className="text-left">
-                      <p className="font-bold text-charcoal-gray dark:text-dark-text">{selectedUser.administrator ? 'Revoke Admin' : 'Make Administrator'}</p>
-                      <p className="text-xs text-gray-400 dark:text-dark-text-secondary font-medium">Change system-wide permissions</p>
+                      <p className="font-bold text-white">{selectedUser.administrator ? 'Revoke Admin' : 'Make Administrator'}</p>
+                      <p className="text-xs text-secondary font-medium">Change system-wide permissions</p>
                     </div>
                   </button>
 
-                  <form onSubmit={handleOverridePassword} className="p-4 border-2 border-gray-100 dark:border-dark-border rounded-2xl space-y-4">
+                  <form onSubmit={handleOverridePassword} className="p-4 border-2 border-white/5 rounded-2xl space-y-4">
                     <div className="text-left">
-                      <p className="font-bold text-charcoal-gray dark:text-dark-text text-sm">Override Password</p>
-                      <p className="text-[10px] text-gray-400 dark:text-dark-text-secondary font-medium mb-3">Set a new preliminary password</p>
+                      <p className="font-bold text-white text-sm">Override Password</p>
+                      <p className="text-[10px] text-secondary font-medium mb-3">Set a new preliminary password</p>
                       <div className="flex gap-2">
                         <input
                           type="password"
                           required
                           placeholder="New password..."
-                          className="flex-1 p-2 bg-light-gray dark:bg-dark-bg rounded-lg text-xs outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary text-charcoal-gray dark:text-dark-text"
+                          className="flex-1 p-2 bg-background rounded-lg text-xs outline-none focus:ring-1 focus:ring-primary text-white"
                           value={overridePassword}
                           onChange={(e) => setOverridePassword(e.target.value)}
                         />
                         <button
                           type="submit"
                           disabled={actionLoading || !overridePassword}
-                          className="px-4 py-2 bg-deep-blue dark:bg-dark-primary text-white rounded-lg text-xs font-bold shadow hover:opacity-90 disabled:opacity-50"
+                          className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold shadow hover:opacity-90 disabled:opacity-50"
                         >
                           Set
                         </button>
@@ -304,20 +301,20 @@ const UserManagement = () => {
 
                   <button
                     onClick={() => setIsDeleting(true)}
-                    className="w-full p-4 border-2 border-transparent hover:border-alert-red/20 dark:hover:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl flex items-center gap-4 transition group"
+                    className="w-full p-4 border-2 border-transparent hover:border-error/20 hover:bg-error/10 rounded-2xl flex items-center gap-4 transition group"
                   >
-                    <div className="w-10 h-10 bg-red-50 dark:bg-red-900/20 text-alert-red dark:text-red-400 rounded-xl flex items-center justify-center group-hover:bg-alert-red dark:group-hover:bg-red-600 group-hover:text-white">
+                    <div className="w-10 h-10 bg-error/10 text-error rounded-xl flex items-center justify-center group-hover:bg-error group-hover:text-white">
                       <Trash2 size={20} />
                     </div>
                     <div className="text-left">
-                      <p className="font-bold text-charcoal-gray dark:text-dark-text">Delete Account</p>
-                      <p className="text-xs text-gray-400 dark:text-dark-text-secondary font-medium">Permanently remove this user</p>
+                      <p className="font-bold text-white">Delete Account</p>
+                      <p className="text-xs text-secondary font-medium">Permanently remove this user</p>
                     </div>
                   </button>
                 </div>
               ) : (
                 <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-200">
-                  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-500 rounded-2xl flex gap-3 text-alert-red dark:text-red-400">
+                  <div className="p-4 bg-error/10 border border-error/20 rounded-2xl flex gap-3 text-error">
                     <AlertTriangle className="shrink-0" size={24} />
                     <div>
                       <p className="font-bold">Dangerous Action!</p>
@@ -327,14 +324,14 @@ const UserManagement = () => {
                   <div className="flex gap-3">
                     <button 
                       onClick={() => setIsDeleting(false)} 
-                      className="flex-1 py-3 bg-gray-100 dark:bg-dark-bg text-charcoal-gray dark:text-dark-text font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-dark-surface-hover transition"
+                      className="flex-1 py-3 bg-background text-white font-bold rounded-xl hover:bg-white/5 transition"
                     >
                       Cancel
                     </button>
                     <button 
                       onClick={() => handleDeleteUser(selectedUser)} 
                       disabled={actionLoading}
-                      className="flex-1 py-3 bg-alert-red dark:bg-red-600 text-white font-bold rounded-xl hover:opacity-90 transition shadow-lg flex items-center justify-center gap-2"
+                      className="flex-1 py-3 bg-error text-white font-bold rounded-xl hover:opacity-90 transition shadow-lg flex items-center justify-center gap-2"
                     >
                       {actionLoading ? <Loader2 className="animate-spin" size={18} /> : 'Delete User'}
                     </button>

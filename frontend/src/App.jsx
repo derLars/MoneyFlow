@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import useAuthStore from './store/authStore'
-import useThemeStore from './store/themeStore'
 import LoginPage from './pages/LoginPage'
 import Layout from './components/Layout'
 import PurchaseEditor from './pages/PurchaseEditor'
@@ -14,18 +13,16 @@ import SettingsPage from './pages/SettingsPage'
 import MoneyFlowPage from './pages/MoneyFlowPage'
 
 function App() {
-  const { user, isAuthenticated, checkAuth, loading, logout } = useAuthStore()
-  const { initTheme } = useThemeStore()
+  const { user, isAuthenticated, checkAuth, loading } = useAuthStore()
 
   useEffect(() => {
     checkAuth()
-    initTheme()
   }, [])
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-light-gray font-sans">
-        <div className="text-deep-blue font-bold animate-pulse">Loading Moneyflow...</div>
+      <div className="flex items-center justify-center min-h-screen bg-background font-sans">
+        <div className="text-primary font-bold animate-pulse">Loading Moneyflow...</div>
       </div>
     )
   }

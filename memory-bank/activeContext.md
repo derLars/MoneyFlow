@@ -23,6 +23,7 @@ The project is now in a stable, feature-complete state. All development phases (
 2. **User Creation**: Generate initial admin accounts using `create_admin_user.py`.
 
 ## Recent Changes
+- **Bug Fix (Purchase Saving)**: Fixed an issue where saving an existing purchase failed because `original_name` was missing from the item payload.
 - **Archive Payer Display**: Updated the purchase archive to show usernames instead of IDs, with fallback for deleted accounts.
 - **Item Reordering**: Added drag-and-drop item reordering in the Purchase Editor for mobile and desktop.
 - **KPI Refinement**: Simplified the main page to focus on individual monthly spending.

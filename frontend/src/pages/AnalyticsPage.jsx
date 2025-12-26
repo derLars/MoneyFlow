@@ -2,14 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
   Search, 
-  Calendar, 
-  ChevronRight, 
-  TrendingUp, 
-  ShoppingBag, 
-  Calculator,
   Filter,
   X,
-  LayoutDashboard
+  LayoutDashboard,
+  TrendingUp, 
+  ShoppingBag, 
+  Calculator
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -26,12 +24,18 @@ import {
   Layer
 } from 'recharts';
 import api from '../api/axios';
-import useThemeStore from '../store/themeStore';
 
-const SankeyNode = ({ x, y, width, height, index, payload, containerWidth, theme }) => {
+// Theme constants
+const COLORS = {
+  primary: '#3B82F6',
+  info: '#60A5FA',
+  textSecondary: '#9CA3AF',
+  grid: '#334155',
+  surface: '#151921'
+};
+
+const SankeyNode = ({ x, y, width, height, index, payload, containerWidth }) => {
   const isOut = x + width + 6 > containerWidth;
-  const nodeColor = theme === 'dark' ? '#60A5FA' : '#003366';
-  const textColor = theme === 'dark' ? '#94A3B8' : '#475569';
 
   return (
     <Layer key={`sankey-node-${index}`}>
@@ -40,7 +44,7 @@ const SankeyNode = ({ x, y, width, height, index, payload, containerWidth, theme
         y={y}
         width={width}
         height={height}
-        fill={nodeColor}
+        fill={COLORS.info}
         fillOpacity="0.8"
       />
       <text
@@ -50,10 +54,10 @@ const SankeyNode = ({ x, y, width, height, index, payload, containerWidth, theme
         verticalAnchor="middle"
         fontSize="10"
         fontWeight="bold"
-        fill={textColor}
+        fill={COLORS.textSecondary}
       >
         {payload.name.replace(/^L\d: |^Item: /, '')}
-        <tspan fill={nodeColor} dx="5">
+        <tspan fill={COLORS.info} dx="5">
           ({payload.value.toFixed(2)})
         </tspan>
       </text>
@@ -62,7 +66,6 @@ const SankeyNode = ({ x, y, width, height, index, payload, containerWidth, theme
 };
 
 const AnalyticsPage = () => {
-  const { theme } = useThemeStore();
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [viewType, setViewType] = useState('cumulative');
@@ -83,8 +86,6 @@ const AnalyticsPage = () => {
     cat2: '',
     cat3: '',
   });
-
-  const [categories, setCategories] = useState([]);
 
   const getCumulativeData = (data) => {
     let runningTotal = 0;
@@ -115,46 +116,36 @@ const AnalyticsPage = () => {
     handleAnalyze();
   }, []);
 
-  useEffect(() => {
-    const fetchCats = async () => {
-      try {
-        const res = await api.get('/purchases/users/all'); // Placeholder for categories endpoint
-        // In a real app, we'd have a specific endpoint for unique categories
-      } catch (err) {}
-    };
-    fetchCats();
-  }, []);
-
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const isCumulative = viewType === 'cumulative';
       
       return (
-        <div className="bg-white dark:bg-dark-surface p-3 border border-gray-100 dark:border-dark-border shadow-xl rounded-lg min-w-[180px]">
-          <p className="text-[10px] uppercase font-bold text-gray-400 dark:text-dark-text-secondary mb-1">
+        <div className="bg-surface p-3 border border-white/5 shadow-xl rounded-lg min-w-[180px]">
+          <p className="text-[10px] uppercase font-bold text-secondary mb-1">
             {new Date(data.date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
           </p>
           
           <div className="flex justify-between items-baseline gap-4">
-            <span className="text-xs text-gray-500 dark:text-dark-text-secondary">{isCumulative ? 'Total to date:' : 'Daily cost:'}</span>
-            <span className="text-xl font-bold text-deep-blue dark:text-dark-primary">{data.cost.toFixed(2)}</span>
+            <span className="text-xs text-secondary">{isCumulative ? 'Total to date:' : 'Daily cost:'}</span>
+            <span className="text-xl font-bold text-primary">{data.cost.toFixed(2)}</span>
           </div>
 
           {isCumulative && data.daily_cost !== undefined && (
             <div className="flex justify-between items-baseline gap-4 mt-1">
-              <span className="text-xs text-gray-500 dark:text-dark-text-secondary">Spend this day:</span>
-              <span className="text-sm font-bold text-charcoal-gray dark:text-dark-text">{data.daily_cost.toFixed(2)}</span>
+              <span className="text-xs text-secondary">Spend this day:</span>
+              <span className="text-sm font-bold text-white">{data.daily_cost.toFixed(2)}</span>
             </div>
           )}
 
           {data.purchases && data.purchases.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-dark-border">
-              <p className="text-[10px] uppercase font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Purchases Breakdown</p>
+            <div className="mt-2 pt-2 border-t border-white/5">
+              <p className="text-[10px] uppercase font-bold text-secondary mb-1">Purchases Breakdown</p>
               {data.purchases.map((p, i) => (
                 <div key={i} className="flex justify-between items-center gap-4 text-xs">
-                  <span className="text-charcoal-gray dark:text-dark-text truncate">• {p.name}</span>
-                  <span className="font-bold text-deep-blue dark:text-dark-primary">{p.cost.toFixed(2)}</span>
+                  <span className="text-white truncate">• {p.name}</span>
+                  <span className="font-bold text-primary">{p.cost.toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -169,24 +160,24 @@ const AnalyticsPage = () => {
     <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto py-6">
       {/* Sidebar Filters */}
       <aside className={`
-        fixed inset-0 z-50 bg-white dark:bg-dark-bg lg:relative lg:bg-transparent lg:block lg:w-72 lg:inset-auto
+        fixed inset-0 z-50 bg-background lg:relative lg:bg-transparent lg:block lg:w-72 lg:inset-auto
         ${showFilters ? 'block' : 'hidden'}
       `}>
         <div className="h-full flex flex-col p-6 lg:p-0">
           <div className="flex items-center justify-between lg:hidden mb-6">
-            <h2 className="text-xl font-bold text-charcoal-gray dark:text-dark-text">Filters</h2>
-            <button onClick={() => setShowFilters(false)} className="text-gray-400 dark:text-dark-text-secondary hover:text-charcoal-gray dark:hover:text-dark-text"><X /></button>
+            <h2 className="text-xl font-bold text-white">Filters</h2>
+            <button onClick={() => setShowFilters(false)} className="text-secondary hover:text-white"><X /></button>
           </div>
 
-          <div className="bg-white dark:bg-dark-surface p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border space-y-6">
-            <div className="flex items-center gap-2 text-deep-blue dark:text-dark-primary font-bold mb-2">
+          <div className="bg-surface p-6 rounded-3xl shadow-sm space-y-6">
+            <div className="flex items-center gap-2 text-primary font-bold mb-2">
               <Filter size={18} />
               <span>Filters</span>
             </div>
 
             {/* Time Filter */}
             <div>
-              <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-2">Time Frame</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-secondary mb-2">Time Frame</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'period', label: 'Period' },
@@ -199,7 +190,7 @@ const AnalyticsPage = () => {
                     onClick={() => setFilters({ ...filters, time_frame: tf.id })}
                     className={`
                       px-3 py-2 rounded-md text-xs font-bold capitalize transition
-                      ${filters.time_frame === tf.id ? 'bg-deep-blue dark:bg-dark-primary text-white' : 'bg-light-gray dark:bg-dark-bg text-gray-500 dark:text-dark-text-secondary hover:bg-gray-200 dark:hover:bg-dark-surface-hover'}
+                      ${filters.time_frame === tf.id ? 'bg-primary text-white' : 'bg-background text-secondary hover:bg-background/80'}
                     `}
                   >
                     {tf.label}
@@ -211,13 +202,13 @@ const AnalyticsPage = () => {
                 <div className="mt-3 space-y-2">
                   <input
                     type="date"
-                    className="w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-xs outline-none text-charcoal-gray dark:text-dark-text"
+                    className="w-full p-2 bg-background rounded-md text-xs outline-none text-white"
                     value={filters.start_date}
                     onChange={(e) => setFilters({ ...filters, start_date: e.target.value })}
                   />
                   <input
                     type="date"
-                    className="w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-xs outline-none text-charcoal-gray dark:text-dark-text"
+                    className="w-full p-2 bg-background rounded-md text-xs outline-none text-white"
                     value={filters.end_date}
                     onChange={(e) => setFilters({ ...filters, end_date: e.target.value })}
                   />
@@ -227,7 +218,7 @@ const AnalyticsPage = () => {
               {filters.time_frame === 'month' && (
                 <input
                   type="month"
-                  className="mt-3 w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none text-charcoal-gray dark:text-dark-text"
+                  className="mt-3 w-full p-2 bg-background rounded-md text-sm outline-none text-white"
                   value={filters.start_date.substring(0, 7)}
                   onChange={(e) => setFilters({ ...filters, start_date: `${e.target.value}-01` })}
                 />
@@ -239,7 +230,7 @@ const AnalyticsPage = () => {
                   placeholder="YYYY"
                   min="2000"
                   max="2100"
-                  className="mt-3 w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none text-charcoal-gray dark:text-dark-text"
+                  className="mt-3 w-full p-2 bg-background rounded-md text-sm outline-none text-white"
                   value={filters.start_date.substring(0, 4)}
                   onChange={(e) => setFilters({ ...filters, start_date: `${e.target.value}-01-01` })}
                 />
@@ -249,13 +240,13 @@ const AnalyticsPage = () => {
             {/* Search */}
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-2">Search Title</label>
+                <label className="block text-[10px] uppercase tracking-wider font-bold text-secondary mb-2">Search Title</label>
                 <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-text-secondary" />
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary" />
                   <input
                     type="text"
                     placeholder="Purchase name..."
-                    className="w-full pl-9 pr-3 py-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary text-charcoal-gray dark:text-dark-text"
+                    className="w-full pl-9 pr-3 py-2 bg-background rounded-md text-sm outline-none focus:ring-1 focus:ring-primary text-white"
                     value={filters.search}
                     onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                   />
@@ -263,13 +254,13 @@ const AnalyticsPage = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-2">Search Items</label>
+                <label className="block text-[10px] uppercase tracking-wider font-bold text-secondary mb-2">Search Items</label>
                 <div className="relative">
-                  <ShoppingBag size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-text-secondary" />
+                  <ShoppingBag size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary" />
                   <input
                     type="text"
                     placeholder="Item name (e.g. Milk)..."
-                    className="w-full pl-9 pr-3 py-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none focus:ring-1 focus:ring-deep-blue dark:focus:ring-dark-primary text-charcoal-gray dark:text-dark-text"
+                    className="w-full pl-9 pr-3 py-2 bg-background rounded-md text-sm outline-none focus:ring-1 focus:ring-primary text-white"
                     value={filters.item_search}
                     onChange={(e) => setFilters({ ...filters, item_search: e.target.value })}
                   />
@@ -279,25 +270,25 @@ const AnalyticsPage = () => {
 
             {/* Categories */}
             <div className="space-y-3">
-              <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary mb-1">Categories</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-secondary mb-1">Categories</label>
               <input
                 type="text"
                 placeholder="Category 1"
-                className="w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none text-charcoal-gray dark:text-dark-text"
+                className="w-full p-2 bg-background rounded-md text-sm outline-none text-white"
                 value={filters.cat1}
                 onChange={(e) => setFilters({ ...filters, cat1: e.target.value })}
               />
               <input
                 type="text"
                 placeholder="Category 2"
-                className="w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none text-charcoal-gray dark:text-dark-text"
+                className="w-full p-2 bg-background rounded-md text-sm outline-none text-white"
                 value={filters.cat2}
                 onChange={(e) => setFilters({ ...filters, cat2: e.target.value })}
               />
               <input
                 type="text"
                 placeholder="Category 3"
-                className="w-full p-2 bg-light-gray dark:bg-dark-bg rounded-md text-sm outline-none text-charcoal-gray dark:text-dark-text"
+                className="w-full p-2 bg-background rounded-md text-sm outline-none text-white"
                 value={filters.cat3}
                 onChange={(e) => setFilters({ ...filters, cat3: e.target.value })}
               />
@@ -306,7 +297,7 @@ const AnalyticsPage = () => {
             <button
               onClick={handleAnalyze}
               disabled={loading}
-              className="w-full py-3 bg-deep-blue dark:bg-dark-primary text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition active:scale-95 disabled:opacity-50"
+              className="w-full py-3 bg-primary text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition active:scale-95 disabled:opacity-50"
             >
               {loading ? 'Analyzing...' : 'Analyze'}
             </button>
@@ -317,28 +308,28 @@ const AnalyticsPage = () => {
       {/* Main Content */}
       <main className="flex-grow space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-3xl font-bold text-charcoal-gray dark:text-dark-text flex items-center gap-3">
-            <LayoutDashboard className="text-deep-blue dark:text-dark-primary" size={32} />
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <LayoutDashboard className="text-primary" size={32} />
             Analytics
           </h1>
           
           <div className="flex items-center gap-3">
-            <div className="bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-lg p-1 flex">
+            <div className="bg-surface border border-white/5 rounded-lg p-1 flex">
               <button
                 onClick={() => setViewType('cumulative')}
-                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'cumulative' ? 'bg-deep-blue dark:bg-dark-primary text-white shadow-sm' : 'text-gray-500 dark:text-dark-text-secondary hover:bg-gray-50 dark:hover:bg-dark-surface-hover'}`}
+                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'cumulative' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
               >
                 Cumulative
               </button>
               <button
                 onClick={() => setViewType('individual')}
-                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'individual' ? 'bg-deep-blue dark:bg-dark-primary text-white shadow-sm' : 'text-gray-500 dark:text-dark-text-secondary hover:bg-gray-50 dark:hover:bg-dark-surface-hover'}`}
+                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'individual' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
               >
                 Individual
               </button>
               <button
                 onClick={() => setViewType('sankey')}
-                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'sankey' ? 'bg-deep-blue dark:bg-dark-primary text-white shadow-sm' : 'text-gray-500 dark:text-dark-text-secondary hover:bg-gray-50 dark:hover:bg-dark-surface-hover'}`}
+                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'sankey' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
               >
                 Flow
               </button>
@@ -346,7 +337,7 @@ const AnalyticsPage = () => {
 
             <button 
               onClick={() => setShowFilters(true)}
-              className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-lg text-sm font-bold text-charcoal-gray dark:text-dark-text"
+              className="lg:hidden flex items-center gap-2 px-4 py-2 bg-surface border border-white/5 rounded-lg text-sm font-bold text-white"
             >
               <Filter size={16} />
               Filters
@@ -356,160 +347,162 @@ const AnalyticsPage = () => {
 
         {/* KPI Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white dark:bg-dark-surface p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-50 dark:bg-dark-primary/20 rounded-xl flex items-center justify-center text-deep-blue dark:text-dark-primary">
+          <div className="bg-surface p-6 rounded-3xl shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
               <TrendingUp size={24} />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary">Total Spending</p>
-              <p className="text-2xl font-bold text-charcoal-gray dark:text-dark-text">{stats.summary.total_spending.toFixed(2)}</p>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-secondary">Total Spending</p>
+              <p className="text-2xl font-bold text-white">{stats.summary.total_spending.toFixed(2)}</p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-dark-surface p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center text-vibrant-green dark:text-green-400">
+          <div className="bg-surface p-6 rounded-3xl shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 bg-green-900/20 rounded-xl flex items-center justify-center text-success">
               <ShoppingBag size={24} />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary">Purchases</p>
-              <p className="text-2xl font-bold text-charcoal-gray dark:text-dark-text">{stats.summary.num_purchases}</p>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-secondary">Purchases</p>
+              <p className="text-2xl font-bold text-white">{stats.summary.num_purchases}</p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-dark-surface p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400">
+          <div className="bg-surface p-6 rounded-3xl shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-400">
               <Calculator size={24} />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-text-secondary">Avg. Cost</p>
-              <p className="text-2xl font-bold text-charcoal-gray dark:text-dark-text">{stats.summary.avg_cost.toFixed(2)}</p>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-secondary">Avg. Cost</p>
+              <p className="text-2xl font-bold text-white">{stats.summary.avg_cost.toFixed(2)}</p>
             </div>
           </div>
         </div>
 
         {/* Chart Section */}
-        <section className="bg-white dark:bg-dark-surface p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border">
+        <section className="bg-surface p-8 rounded-3xl shadow-sm">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold text-charcoal-gray dark:text-dark-text">
+            <h2 className="text-xl font-bold text-white">
               {viewType === 'cumulative' ? 'Cumulative Spending' : 'Purchase Distribution'}
             </h2>
-            <div className="flex items-center gap-2 px-3 py-1 bg-light-gray dark:bg-dark-bg rounded-full text-xs font-bold text-gray-500 dark:text-dark-text-secondary">
+            <div className="flex items-center gap-2 px-3 py-1 bg-background rounded-full text-xs font-bold text-secondary">
               {viewType === 'cumulative' ? (
-                <><TrendingUp size={14} className="text-deep-blue dark:text-dark-primary" /><span>Accumulated running total</span></>
+                <><TrendingUp size={14} className="text-primary" /><span>Accumulated running total</span></>
               ) : (
-                <><BarChart3 size={14} className="text-deep-blue dark:text-dark-primary" /><span>Individual transactions</span></>
+                <><BarChart3 size={14} className="text-primary" /><span>Individual transactions</span></>
               )}
             </div>
           </div>
 
-          <div className="h-[400px] w-full text-xs">
-            <ResponsiveContainer width="100%" height="100%">
-              {viewType === 'cumulative' ? (
-                <AreaChart data={getCumulativeData(stats.chart_data)} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={theme === 'dark' ? '#60A5FA' : '#003366'} stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor={theme === 'dark' ? '#60A5FA' : '#003366'} stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#F1F5F9'} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#94A3B8" 
-                    fontSize={10} 
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                  />
-                  <YAxis 
-                    stroke="#94A3B8" 
-                    fontSize={10} 
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(val) => val}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area 
-                    type="monotone" 
-                    dataKey="cost" 
-                    stroke={theme === 'dark' ? '#60A5FA' : '#003366'} 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorCost)" 
-                    activeDot={{ r: 6, strokeWidth: 0 }}
-                  />
-                </AreaChart>
-              ) : viewType === 'individual' ? (
-                <ScatterChart margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#F1F5F9'} />
-                  <XAxis 
-                    dataKey="date" 
-                    name="Date" 
-                    stroke="#94A3B8" 
-                    fontSize={10} 
-                    tickLine={false} 
-                    axisLine={false}
-                    type="category"
-                    tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                  />
-                  <YAxis 
-                    dataKey="cost" 
-                    name="Cost" 
-                    stroke="#94A3B8" 
-                    fontSize={10} 
-                    tickLine={false} 
-                    axisLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-                  <Scatter name="Purchases" data={stats.chart_data}>
-                    {stats.chart_data.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={theme === 'dark' ? '#60A5FA' : '#003366'} 
-                        fillOpacity={0.6} 
-                        stroke={theme === 'dark' ? '#60A5FA' : '#003366'} 
-                        strokeWidth={2} 
-                      />
-                    ))}
-                  </Scatter>
-                </ScatterChart>
-              ) : (
-                <Sankey
-                  data={(() => {
-                    const nodes_set = new Set();
-                    stats.sankey_data.forEach(l => {
-                      nodes_set.add(l.source);
-                      nodes_set.add(l.target);
-                    });
-                    const nodes = Array.from(nodes_set).map(name => ({ name }));
-                    const links = stats.sankey_data.map(l => ({
-                      source: nodes.findIndex(n => n.name === l.source),
-                      target: nodes.findIndex(n => n.name === l.target),
-                      value: l.value
-                    }));
-                    return { nodes, links };
-                  })()}
-                  margin={{ top: 20, left: 20, right: 150, bottom: 20 }}
-                  nodePadding={30}
-                  link={{ stroke: theme === 'dark' ? '#60A5FA' : '#003366', strokeOpacity: 0.1 }}
-                  node={<SankeyNode containerWidth={1000} theme={theme} />}
-                >
-                  <Tooltip 
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-white p-2 border border-gray-100 shadow-lg rounded text-[10px]">
-                            <p className="font-bold">{payload[0].payload.name}</p>
-                            <p className="text-deep-blue">{payload[0].value.toFixed(2)}</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                </Sankey>
-              )}
-            </ResponsiveContainer>
+          <div className="h-[400px] w-full text-xs overflow-x-auto">
+            <div className="min-w-[600px] h-full">
+                <ResponsiveContainer width="100%" height="100%">
+                {viewType === 'cumulative' ? (
+                    <AreaChart data={getCumulativeData(stats.chart_data)} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                        <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={COLORS.info} stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor={COLORS.info} stopOpacity={0}/>
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={COLORS.grid} />
+                    <XAxis 
+                        dataKey="date" 
+                        stroke={COLORS.textSecondary}
+                        fontSize={10} 
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    />
+                    <YAxis 
+                        stroke={COLORS.textSecondary}
+                        fontSize={10} 
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(val) => val}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area 
+                        type="monotone" 
+                        dataKey="cost" 
+                        stroke={COLORS.info}
+                        strokeWidth={3}
+                        fillOpacity={1} 
+                        fill="url(#colorCost)" 
+                        activeDot={{ r: 6, strokeWidth: 0 }}
+                    />
+                    </AreaChart>
+                ) : viewType === 'individual' ? (
+                    <ScatterChart margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={COLORS.grid} />
+                    <XAxis 
+                        dataKey="date" 
+                        name="Date" 
+                        stroke={COLORS.textSecondary}
+                        fontSize={10} 
+                        tickLine={false} 
+                        axisLine={false}
+                        type="category"
+                        tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    />
+                    <YAxis 
+                        dataKey="cost" 
+                        name="Cost" 
+                        stroke={COLORS.textSecondary}
+                        fontSize={10} 
+                        tickLine={false} 
+                        axisLine={false}
+                    />
+                    <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
+                    <Scatter name="Purchases" data={stats.chart_data}>
+                        {stats.chart_data.map((entry, index) => (
+                        <Cell 
+                            key={`cell-${index}`} 
+                            fill={COLORS.info}
+                            fillOpacity={0.6} 
+                            stroke={COLORS.info}
+                            strokeWidth={2} 
+                        />
+                        ))}
+                    </Scatter>
+                    </ScatterChart>
+                ) : (
+                    <Sankey
+                    data={(() => {
+                        const nodes_set = new Set();
+                        stats.sankey_data.forEach(l => {
+                        nodes_set.add(l.source);
+                        nodes_set.add(l.target);
+                        });
+                        const nodes = Array.from(nodes_set).map(name => ({ name }));
+                        const links = stats.sankey_data.map(l => ({
+                        source: nodes.findIndex(n => n.name === l.source),
+                        target: nodes.findIndex(n => n.name === l.target),
+                        value: l.value
+                        }));
+                        return { nodes, links };
+                    })()}
+                    margin={{ top: 20, left: 20, right: 150, bottom: 20 }}
+                    nodePadding={30}
+                    link={{ stroke: COLORS.info, strokeOpacity: 0.1 }}
+                    node={<SankeyNode containerWidth={1000} />}
+                    >
+                    <Tooltip 
+                        content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                            return (
+                            <div className="bg-white p-2 border border-gray-100 shadow-lg rounded text-[10px]">
+                                <p className="font-bold">{payload[0].payload.name}</p>
+                                <p className="text-primary">{payload[0].value.toFixed(2)}</p>
+                            </div>
+                            );
+                        }
+                        return null;
+                        }}
+                    />
+                    </Sankey>
+                )}
+                </ResponsiveContainer>
+            </div>
           </div>
         </section>
       </main>
