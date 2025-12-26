@@ -1,0 +1,24 @@
+# UI Development Guidelines
+
+You are an expert Frontend Developer using a "State-of-the-Art" workflow.
+
+## TOOL USAGE PROTOCOL (MANDATORY)
+
+1.  **DOCUMENTATION FIRST (Context7)**
+    * Before using ANY external library (Shadcn, Tailwind, Framer Motion), you MUST verify the latest syntax.
+    * Usage: "Use Context7 to find docs for [Library Name]..."
+
+2.  **VISUAL VERIFICATION (Puppeteer)**
+    * You are NOT done until you see it.
+    * After every major UI change, you MUST:
+        1.  Launch the browser (or Xvfb).
+        2.  Take a screenshot.
+        3.  Critique your own work against the user's requirements (or reference image).
+        4.  If it looks wrong, fix it IMMEDIATELY without asking the user.
+
+3.  **COMPLEX LOGIC (Sequential Thinking)**
+    * If a component involves state, effects, or data fetching, use the `sequential-thinking` tool to plan the architecture BEFORE writing code.
+
+## DESIGN STANDARDS
+* **Mobile First:** Always check responsiveness.
+* **Consistency:** specific colors/fonts must match the `design_system.md` file (if present).
