@@ -32,7 +32,8 @@ The interface uses a high-contrast dark theme with vibrant accents.
 
 ## 2. Typography
 
-Font Family: **Inter** (sans-serif)
+Font Family: **Poppins** (sans-serif)
+Link: https://fonts.google.com/specimen/Poppins
 
 | Role | Size | Weight | Tailwind Classes | Example |
 |------|------|--------|------------------|---------|
@@ -106,7 +107,7 @@ theme: {
       secondary: '#9CA3AF',
     },
     fontFamily: {
-      sans: ['Inter', 'sans-serif'],
+      sans: ['Poppins', 'sans-serif'],
     },
     borderRadius: {
       '3xl': '1.5rem', // 24px
