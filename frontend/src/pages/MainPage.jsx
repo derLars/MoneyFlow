@@ -31,7 +31,7 @@ const MainPage = () => {
 
   const calculateTotal = (purchase) => {
     if (!purchase.items) return "0.00";
-    return purchase.items.reduce((acc, item) => acc + (item.price * item.quantity), 0).toFixed(2);
+    return purchase.items.reduce((acc, item) => acc + (item.price * item.quantity) - item.discount, 0).toFixed(2);
   };
 
   const currentMonthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date()).toUpperCase();
