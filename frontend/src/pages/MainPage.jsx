@@ -34,6 +34,8 @@ const MainPage = () => {
     return purchase.items.reduce((acc, item) => acc + (item.price * item.quantity), 0).toFixed(2);
   };
 
+  const currentMonthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date()).toUpperCase();
+
   return (
     <div className="max-w-4xl mx-auto space-y-10 py-6">
       {/* KPI Section */}
@@ -43,7 +45,7 @@ const MainPage = () => {
             <TrendingUp size={32} />
           </div>
           <div>
-            <p className="text-sm font-bold text-secondary uppercase tracking-wider">My Spending (This Month)</p>
+            <p className="text-sm font-bold text-secondary uppercase tracking-wider">{currentMonthName} SPENDING</p>
             <p className="text-4xl font-bold text-white mt-1">
               {loading ? "..." : `€${summary?.month_total?.toFixed(2) || "0.00"}`}
             </p>
@@ -56,27 +58,31 @@ const MainPage = () => {
         <h1 className="text-2xl font-bold text-white px-2">
           Quick Actions
         </h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link
             to="/scan"
-            className="flex flex-col items-center justify-center p-8 bg-surface rounded-3xl shadow-sm border border-white/5 hover:bg-white/5 transition group active:scale-95"
+            className="flex items-center gap-4 p-5 bg-surface rounded-3xl shadow-sm border border-white/5 hover:bg-white/5 transition group active:scale-95"
           >
-            <div className="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition duration-300 shadow-lg shadow-primary/20">
-              <Scan size={32} />
+            <div className="w-12 h-12 bg-primary/20 text-primary rounded-2xl flex items-center justify-center group-hover:scale-110 transition duration-300 shadow-lg shadow-primary/20 shrink-0">
+              <Scan size={24} />
             </div>
-            <span className="font-bold text-white text-lg">Scan Receipt</span>
-            <p className="text-xs text-secondary mt-2">Upload and extract data</p>
+            <div className="text-left">
+              <span className="font-bold text-white text-lg block">Scan Receipt</span>
+              <p className="text-xs text-secondary">Upload and extract data</p>
+            </div>
           </Link>
 
           <Link
             to="/create-purchase"
-            className="flex flex-col items-center justify-center p-8 bg-surface rounded-3xl shadow-sm border border-white/5 hover:bg-white/5 transition group active:scale-95"
+            className="flex items-center gap-4 p-5 bg-surface rounded-3xl shadow-sm border border-white/5 hover:bg-white/5 transition group active:scale-95"
           >
-            <div className="w-16 h-16 bg-success/20 text-success rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition duration-300 shadow-lg shadow-success/20">
-              <PlusCircle size={32} />
+            <div className="w-12 h-12 bg-success/20 text-success rounded-2xl flex items-center justify-center group-hover:scale-110 transition duration-300 shadow-lg shadow-success/20 shrink-0">
+              <PlusCircle size={24} />
             </div>
-            <span className="font-bold text-white text-lg">Create Purchase</span>
-            <p className="text-xs text-secondary mt-2">Manual entry workflow</p>
+            <div className="text-left">
+              <span className="font-bold text-white text-lg block">Create Purchase</span>
+              <p className="text-xs text-secondary">Manual entry workflow</p>
+            </div>
           </Link>
         </div>
       </section>

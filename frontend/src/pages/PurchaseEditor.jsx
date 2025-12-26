@@ -382,9 +382,9 @@ const PurchaseEditor = () => {
 
   // --- Handlers ---
 
-  const addItem = () => {
+  const addItem = (index = 0) => {
     if (!user?.user_id) return;
-    setItems([{
+    const newItem = {
       id: Date.now(),
       friendly_name: '',
       original_name: '',
@@ -396,7 +396,11 @@ const PurchaseEditor = () => {
       category_level_2: '',
       category_level_3: '',
       contributors: globalContributors,
-    }, ...items]);
+    };
+    
+    const newItems = [...items];
+    newItems.splice(index, 0, newItem);
+    setItems(newItems);
   };
 
   const applyGlobalContributors = () => {
@@ -614,32 +618,61 @@ const PurchaseEditor = () => {
             </span>
         </div>
 
+        {/* Add at Top */}
+        <button
+            onClick={() => addItem(0)}
+            className="w-full py-2 bg-white/5 hover:bg-white/10 border border-dashed border-white/10 rounded-2xl text-secondary hover:text-white transition flex items-center justify-center gap-2 font-bold text-sm"
+        >
+            <Plus size={16} />
+            Add Item at Top
+        </button>
+
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-                {items.map((item) => (
-                    <SortableItem
-                        key={item.id}
-                        item={item}
-                        purchase={purchase}
-                        updateItem={updateItem}
-                        deleteItem={deleteItem}
-                        allUsers={allUsers}
-                        categoriesLevel1={categoriesLevel1}
-                        categoriesLevel2={categoriesLevel2}
-                        categoriesLevel3={categoriesLevel3}
-                        user={user}
-                    />
-                ))}
+                <div className="space-y-4">
+                    {items.map((item, index) => (
+                        <React.Fragment key={item.id}>
+                            <SortableItem
+                                item={item}
+                                purchase={purchase}
+                                updateItem={updateItem}
+                                deleteItem={deleteItem}
+                                allUsers={allUsers}
+                                categoriesLevel1={categoriesLevel1}
+                                categoriesLevel2={categoriesLevel2}
+                                categoriesLevel3={categoriesLevel3}
+                                user={user}
+                            />
+                            {/* Add Between / At Bottom */}
+                            <div className="relative h-4 group">
+                                <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                    <div className="w-full border-t border-white/5 group-hover:border-primary/50 transition-colors"></div>
+                                </div>
+                                <div className="relative flex justify-center">
+                                    <button
+                                        onClick={() => addItem(index + 1)}
+                                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity bg-primary text-white rounded-full p-1 shadow-lg shadow-primary/20 scale-75 group-hover:scale-100 duration-200"
+                                        title="Add item here"
+                                    >
+                                        <Plus size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        </React.Fragment>
+                    ))}
+                </div>
             </SortableContext>
         </DndContext>
 
-        <button
-            onClick={addItem}
-            className="w-full py-4 bg-surface border-2 border-dashed border-white/10 rounded-3xl text-secondary hover:text-white hover:border-white/20 transition flex items-center justify-center gap-2 font-bold"
-        >
-            <Plus size={20} />
-            Add New Item
-        </button>
+        {items.length === 0 && (
+            <button
+                onClick={() => addItem(0)}
+                className="w-full py-8 bg-surface border-2 border-dashed border-white/10 rounded-3xl text-secondary hover:text-white hover:border-white/20 transition flex flex-col items-center justify-center gap-2 font-bold"
+            >
+                <Plus size={24} />
+                <span>Add Your First Item</span>
+            </button>
+        )}
       </div>
 
       {/* Sticky Action Footer */}
