@@ -116,18 +116,30 @@ STORAGE_LIST=$(pvesm status -content rootdir | awk 'NR>1 {print $1}')
 read -p "Select storage for LXC (Available: $STORAGE_LIST, Default: local-lvm): " STORAGE
 STORAGE=${STORAGE:-local-lvm}
 
-# Template
+# Template logic
 TEMPLATE_STORAGE=$(pvesm status -content iso | awk 'NR>1 {print $1}' | head -n 1)
 TEMPLATE_STORAGE=${TEMPLATE_STORAGE:-local}
-TEMPLATE="debian-12-standard_12.2-1_amd64.tar.zst"
-TEMPLATE_PATH="$TEMPLATE_STORAGE:vztmpl/$TEMPLATE"
 
-info "Checking for template $TEMPLATE..."
-if ! pveam list $TEMPLATE_STORAGE | grep -q "$TEMPLATE"; then
-    info "Downloading template..."
-    pveam update
-    pveam download $TEMPLATE_STORAGE $TEMPLATE
+info "Updating Proxmox template list..."
+pveam update > /dev/null
+
+# Get the latest Debian 12 standard template
+TEMPLATE=$(pveam available | grep "debian-12-standard" | sort -r | head -n 1 | awk '{print $2}')
+
+if [ -z "$TEMPLATE" ]; then
+    error "Could not find a Debian 12 standard template in Proxmox available list."
 fi
+
+TEMPLATE_FILENAME=$(basename "$TEMPLATE")
+TEMPLATE_PATH="$TEMPLATE_STORAGE:vztmpl/$TEMPLATE_FILENAME"
+
+info "Checking for template $TEMPLATE_FILENAME in $TEMPLATE_STORAGE..."
+if ! pveam list $TEMPLATE_STORAGE | grep -q "$TEMPLATE_FILENAME"; then
+    info "Downloading template: $TEMPLATE"
+    pveam download $TEMPLATE_STORAGE "$TEMPLATE"
+fi
+>>>>+++ REPLACE
+
 
 info "Creating LXC container $CT_ID ($CT_NAME)..."
 pct create $CT_ID "$TEMPLATE_PATH" \
