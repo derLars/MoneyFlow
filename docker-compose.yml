@@ -30,7 +30,7 @@ services:
       - ./data:/app/data
       - ./images:/app/images
       - ./config.yaml:/app/config.yaml
-    command: sh -c "python3 migrate.py && python3 -m uvicorn main:app --host 0.0.0.0 --port 8002"
+    command: sh -c "python3 migrate.py && python3 -m uvicorn main:app --host 0.0.0.0 --port 8002 --proxy-headers --forwarded-allow-ips='*'"
     depends_on:
       db:
         condition: service_healthy

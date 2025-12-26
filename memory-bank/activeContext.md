@@ -23,6 +23,9 @@ The project is now in a stable, feature-complete state. All development phases (
 2. **User Creation**: Generate initial admin accounts using `create_admin_user.py`.
 
 ## Recent Changes
+- **Mobile UI Simplification**: Removed the `MobileNav` (bottom navigation bar) to improve usable screen space on mobile devices and prevent UI overlapping in editors and modals. Navigation is now centralized in the top hamburger menu.
+- **Image Storage & Proxy Fix**: Corrected path resolution in `backend/storage.py` to ensure images are saved to the persistent volume in Docker. Simplified Nginx configuration to reliably proxy API and image requests behind a reverse proxy.
+- **Reverse Proxy & Mobile Fix**: Converted absolute URLs to relative paths for API and images. Configured Uvicorn with `--proxy-headers` and provided a custom Nginx configuration to support deployment behind reverse proxies and accessibility from mobile devices.
 - **Cropping & Rotation**: Reworked the image editor in `ScanReceiptPage` to use `react-cropper`. Now supports drawing a crop box, with rotation and zoom restricted to sliders only (no gestures).
 - **Bug Fix (Purchase Saving)**: Fixed an issue where saving an existing purchase failed because `original_name` was missing from the item payload.
 - **Archive Payer Display**: Updated the purchase archive to show usernames instead of IDs, with fallback for deleted accounts.

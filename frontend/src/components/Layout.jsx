@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, LogOut, Home, Receipt, LayoutDashboard, Settings, Users, ArrowRightLeft } from 'lucide-react';
 import useAuthStore from '../store/authStore';
-import MobileNav from './MobileNav';
 
 const Layout = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -31,7 +30,7 @@ const Layout = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-background font-sans flex flex-col ${isEditor ? '' : 'pb-24'} md:pb-0`}>
+    <div className="min-h-screen bg-background font-sans flex flex-col">
       {/* Top Bar (Mobile & Desktop) */}
       <header className="bg-surface sticky top-0 z-50 px-6 h-16 flex items-center justify-between shadow-sm">
         {/* Left: Hamburger Menu */}
@@ -112,9 +111,6 @@ const Layout = () => {
       <main className="flex-grow container mx-auto p-4 md:p-8">
         <Outlet />
       </main>
-      
-      {/* Mobile Bottom Navigation - Hidden on Editor Pages */}
-      {!isEditor && <MobileNav />}
     </div>
   );
 };

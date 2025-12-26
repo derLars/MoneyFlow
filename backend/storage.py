@@ -44,9 +44,8 @@ class LocalStorage(StorageInterface):
             os.remove(file_path)
 
     def get_file_url(self, file_name: str) -> str:
-        # Return full absolute URL to backend API
-        # TODO: Make backend URL configurable via config.yaml or env variable
-        return f"http://127.0.0.1:8002/api/purchases/images/{file_name}"
+        # Return relative URL to backend API to support mobile devices and reverse proxies
+        return f"/api/purchases/images/{file_name}"
 
 def get_storage():
     from database import config
@@ -56,12 +55,8 @@ def get_storage():
     local_config = storage_config.get("local", {})
     image_path = local_config.get("image_path", "/app/images")
     
-    # Convert relative paths to absolute paths
+    # Convert relative paths to absolute paths relative to current working directory
     if not os.path.isabs(image_path):
-        # Resolve relative to project root (parent of backend/)
-        backend_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(backend_dir)
-        image_path = os.path.join(project_root, image_path)
         image_path = os.path.abspath(image_path)
     
     print(f"DEBUG: Using storage path: {image_path}")

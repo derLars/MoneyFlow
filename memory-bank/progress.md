@@ -9,6 +9,7 @@
 - [x] Step 3: Frontend Setup (Vite + Tailwind).
 - [x] Step 16: Scan Receipt Page (Frontend).
 - [x] Step 21: UI Polish & Lifecycle Finalization.
+- [x] UI Simplification: Removed MobileNav for better screen utilization.
 
 ## Project Roadmap
 

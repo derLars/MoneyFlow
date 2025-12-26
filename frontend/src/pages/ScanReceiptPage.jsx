@@ -9,23 +9,32 @@ const ImageEditorModal = ({ image, onSave, onCancel }) => {
   const [cropper, setCropper] = useState(null);
   const [rotation, setRotation] = useState(image.rotation || 0);
   const [zoom, setZoom] = useState(1); // 1 is default zoom
+  const [isReady, setIsReady] = useState(false);
 
   // Apply rotation when slider changes
   useEffect(() => {
-    if (cropper) {
-      cropper.rotateTo(rotation);
+    if (cropper && isReady) {
+      try {
+        cropper.rotateTo(rotation);
+      } catch (e) {
+        console.warn('Cropper rotation failed:', e);
+      }
     }
-  }, [rotation, cropper]);
+  }, [rotation, cropper, isReady]);
 
   // Apply zoom when slider changes
   useEffect(() => {
-    if (cropper) {
-      cropper.zoomTo(zoom);
+    if (cropper && isReady) {
+      try {
+        cropper.zoomTo(zoom);
+      } catch (e) {
+        console.warn('Cropper zoom failed:', e);
+      }
     }
-  }, [zoom, cropper]);
+  }, [zoom, cropper, isReady]);
 
   const handleSave = () => {
-    if (cropper) {
+    if (cropper && isReady) {
       cropper.getCroppedCanvas().toBlob((blob) => {
         if (!blob) {
             console.error('Canvas is empty');
@@ -48,6 +57,11 @@ const ImageEditorModal = ({ image, onSave, onCancel }) => {
         </div>
 
         <div className="flex-1 relative bg-black overflow-hidden" style={{ minHeight: '400px' }}>
+          {!isReady && (
+            <div className="absolute inset-0 flex items-center justify-center z-10 bg-black">
+              <Loader2 className="animate-spin text-primary" size={48} />
+            </div>
+          )}
           <Cropper
             src={image.preview}
             style={{ height: '100%', width: '100%' }}
@@ -56,6 +70,7 @@ const ImageEditorModal = ({ image, onSave, onCancel }) => {
             onInitialized={(instance) => {
               setCropper(instance);
             }}
+            ready={() => setIsReady(true)}
             viewMode={1}
             dragMode="crop" // Allows drawing box
             zoomable={true}
