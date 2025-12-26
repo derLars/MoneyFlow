@@ -36,7 +36,7 @@ def _call_pixtral(images_content: List[str]) -> List[Dict]:
     content = [
         {
             "type": "text", 
-            "text": "You are an expert receipt scanner. Look at the attached receipt images. Extract all purchased items. Return ONLY a valid JSON object with a key 'items' containing a list of objects. Each object must have: 'extracted_name' (string), 'quantity' (integer, default 1), 'price' (number, representing the UNIT price), 'total_price' (number), and 'discount' (number, positive value, default 0). If a line says '2 x 3.50', the quantity is 2 and the price is 3.50. If a discount is explicitly listed for an item, extract it. Ignore the receipt total. If a value is unknown, use null. Do not include any markdown formatting."
+            "text": "You are an expert receipt scanner. Look at the attached receipt images. Extract all purchased items. Return ONLY a valid JSON object with a key 'items' containing a list of objects. Each object must have: 'extracted_name' (string), 'quantity' (integer, default 1), 'price' (number, representing the FINAL price or the UNIT price if quantity is greater than 1), 'total_price' (number), and 'discount' (number, positive value, default 0). Do NOT extract the base price (e.g., price per kilo). If a line says '2 x 3.50', the quantity is 2 and the price is 3.50. If a discount is explicitly listed for an item, extract it. Ignore the receipt total. If a value is unknown, use null. Do not include any markdown formatting."
         }
     ]
 
