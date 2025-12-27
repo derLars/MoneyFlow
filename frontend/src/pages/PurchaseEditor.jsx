@@ -516,13 +516,32 @@ const PurchaseEditor = () => {
     } catch (err) {}
   };
 
-  const calculateTotal = () => {
-    return items.reduce((acc, item) => {
-        const base = (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 0);
-        const withTax = base * (1 + (parseFloat(item.tax_rate) || 0) / 100);
-        return acc + withTax - (parseFloat(item.discount) || 0);
-    }, 0).toFixed(2);
+  const calculateBreakdown = () => {
+    const breakdown = {
+      total: 0,
+      byUser: {} // userId -> amount
+    };
+
+    items.forEach(item => {
+      const base = (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 0);
+      const withTax = base * (1 + (parseFloat(item.tax_rate) || 0) / 100);
+      const itemTotal = withTax - (parseFloat(item.discount) || 0);
+      
+      breakdown.total += itemTotal;
+
+      const contributors = item.contributors || [];
+      if (contributors.length > 0) {
+        const share = itemTotal / contributors.length;
+        contributors.forEach(userId => {
+          breakdown.byUser[userId] = (breakdown.byUser[userId] || 0) + share;
+        });
+      }
+    });
+
+    return breakdown;
   };
+
+  const { total, byUser } = calculateBreakdown();
 
   return (
     <div className="max-w-3xl mx-auto pb-40 px-4 pt-4">
@@ -609,13 +628,29 @@ const PurchaseEditor = () => {
 
       {/* Items List */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between px-2">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                Items ({items.length})
-            </h2>
-            <span className="text-lg font-bold text-primary">
-                Total: {calculateTotal()}
-            </span>
+        <div className="flex flex-col gap-1 px-2 mb-2">
+            <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    Items ({items.length})
+                </h2>
+                <span className="text-xl font-bold text-primary">
+                    Total: {total.toFixed(2)}
+                </span>
+            </div>
+            
+            {Object.keys(byUser).length > 0 && (
+                <div className="flex flex-wrap justify-end gap-x-4 gap-y-1">
+                    {Object.entries(byUser).map(([userId, amount]) => {
+                        const userName = allUsers.find(u => u.user_id === parseInt(userId))?.name || 'Unknown';
+                        return (
+                            <div key={userId} className="text-[11px] font-bold text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                                {userName}: <span className="text-white">{amount.toFixed(2)}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
 
         {/* Add at Top */}

@@ -69,11 +69,13 @@ const AnalyticsPage = () => {
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [viewType, setViewType] = useState('cumulative');
+  const [scope, setScope] = useState('personal'); // 'personal' or 'total'
   const [stats, setStats] = useState({
-    summary: { total_spending: 0, num_purchases: 0, avg_cost: 0 },
+    summary: { total_spending: 0, personal_spending: 0, num_purchases: 0, avg_cost: 0, personal_avg_cost: 0 },
     chart_data: [],
-    scatter_data: [],
-    sankey_data: []
+    personal_chart_data: [],
+    sankey_data: [],
+    personal_sankey_data: []
   });
 
   const [filters, setFilters] = useState({
@@ -88,6 +90,7 @@ const AnalyticsPage = () => {
   });
 
   const getCumulativeData = (data) => {
+    if (!data) return [];
     let runningTotal = 0;
     return data.map(item => {
       runningTotal += item.cost;
@@ -160,7 +163,7 @@ const AnalyticsPage = () => {
     <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto py-6">
       {/* Sidebar Filters */}
       <aside className={`
-        fixed inset-0 z-50 bg-background lg:relative lg:bg-transparent lg:block lg:w-72 lg:inset-auto
+        fixed inset-0 z-40 bg-background lg:relative lg:bg-transparent lg:block lg:w-72 lg:inset-auto
         ${showFilters ? 'block' : 'hidden'}
       `}>
         <div className="h-full flex flex-col p-6 lg:p-0">
@@ -308,10 +311,27 @@ const AnalyticsPage = () => {
       {/* Main Content */}
       <main className="flex-grow space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-            <LayoutDashboard className="text-primary" size={32} />
-            Analytics
-          </h1>
+          <div className="flex items-center gap-6">
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <LayoutDashboard className="text-primary" size={32} />
+              Analytics
+            </h1>
+
+            <div className="bg-surface border border-white/5 rounded-lg p-1 flex">
+              <button
+                onClick={() => setScope('personal')}
+                className={`px-4 py-1.5 rounded-md text-[10px] uppercase tracking-wider font-bold transition ${scope === 'personal' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
+              >
+                My Share
+              </button>
+              <button
+                onClick={() => setScope('total')}
+                className={`px-4 py-1.5 rounded-md text-[10px] uppercase tracking-wider font-bold transition ${scope === 'total' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
+              >
+                Total
+              </button>
+            </div>
+          </div>
           
           <div className="flex items-center gap-3">
             <div className="bg-surface border border-white/5 rounded-lg p-1 flex">
@@ -347,33 +367,44 @@ const AnalyticsPage = () => {
 
         {/* KPI Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-surface p-6 rounded-3xl shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+          <div className="bg-surface p-6 rounded-3xl shadow-sm flex items-center gap-4 border border-white/5 relative overflow-hidden group">
+            <div className={`absolute inset-0 bg-primary opacity-0 group-hover:opacity-[0.02] transition-opacity`} />
+            <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center text-primary relative z-10">
               <TrendingUp size={24} />
             </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider font-bold text-secondary">Total Spending</p>
-              <p className="text-2xl font-bold text-white">{stats.summary.total_spending.toFixed(2)}</p>
+            <div className="relative z-10">
+              <p className="text-[10px] uppercase tracking-wider font-bold text-secondary">
+                {scope === 'personal' ? 'My Contributions' : 'Total Spending'}
+              </p>
+              <p className="text-2xl font-bold text-white tracking-tight">
+                {(scope === 'personal' ? stats.summary.personal_spending : stats.summary.total_spending).toFixed(2)}€
+              </p>
             </div>
           </div>
 
-          <div className="bg-surface p-6 rounded-3xl shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-900/20 rounded-xl flex items-center justify-center text-success">
+          <div className="bg-surface p-6 rounded-3xl shadow-sm flex items-center gap-4 border border-white/5 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-success opacity-0 group-hover:opacity-[0.02] transition-opacity" />
+            <div className="w-12 h-12 bg-green-900/20 rounded-xl flex items-center justify-center text-success relative z-10">
               <ShoppingBag size={24} />
             </div>
-            <div>
+            <div className="relative z-10">
               <p className="text-[10px] uppercase tracking-wider font-bold text-secondary">Purchases</p>
-              <p className="text-2xl font-bold text-white">{stats.summary.num_purchases}</p>
+              <p className="text-2xl font-bold text-white tracking-tight">{stats.summary.num_purchases}</p>
             </div>
           </div>
 
-          <div className="bg-surface p-6 rounded-3xl shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-400">
+          <div className="bg-surface p-6 rounded-3xl shadow-sm flex items-center gap-4 border border-white/5 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-purple-500 opacity-0 group-hover:opacity-[0.02] transition-opacity" />
+            <div className="w-12 h-12 bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-400 relative z-10">
               <Calculator size={24} />
             </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider font-bold text-secondary">Avg. Cost</p>
-              <p className="text-2xl font-bold text-white">{stats.summary.avg_cost.toFixed(2)}</p>
+            <div className="relative z-10">
+              <p className="text-[10px] uppercase tracking-wider font-bold text-secondary">
+                {scope === 'personal' ? 'My Avg. Cost' : 'Avg. Purchase'}
+              </p>
+              <p className="text-2xl font-bold text-white tracking-tight">
+                {(scope === 'personal' ? stats.summary.personal_avg_cost : stats.summary.avg_cost).toFixed(2)}€
+              </p>
             </div>
           </div>
         </div>
@@ -397,7 +428,7 @@ const AnalyticsPage = () => {
             <div className="min-w-[600px] h-full">
                 <ResponsiveContainer width="100%" height="100%">
                 {viewType === 'cumulative' ? (
-                    <AreaChart data={getCumulativeData(stats.chart_data)} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <AreaChart data={getCumulativeData(scope === 'personal' ? stats.personal_chart_data : stats.chart_data)} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                         <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={COLORS.info} stopOpacity={0.1}/>
@@ -453,8 +484,8 @@ const AnalyticsPage = () => {
                         axisLine={false}
                     />
                     <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-                    <Scatter name="Purchases" data={stats.chart_data}>
-                        {stats.chart_data.map((entry, index) => (
+                    <Scatter name="Purchases" data={scope === 'personal' ? stats.personal_chart_data : stats.chart_data}>
+                        {(scope === 'personal' ? stats.personal_chart_data : stats.chart_data).map((entry, index) => (
                         <Cell 
                             key={`cell-${index}`} 
                             fill={COLORS.info}
@@ -468,13 +499,14 @@ const AnalyticsPage = () => {
                 ) : (
                     <Sankey
                     data={(() => {
+                        const data = scope === 'personal' ? stats.personal_sankey_data : stats.sankey_data;
                         const nodes_set = new Set();
-                        stats.sankey_data.forEach(l => {
+                        data.forEach(l => {
                         nodes_set.add(l.source);
                         nodes_set.add(l.target);
                         });
                         const nodes = Array.from(nodes_set).map(name => ({ name }));
-                        const links = stats.sankey_data.map(l => ({
+                        const links = data.map(l => ({
                         source: nodes.findIndex(n => n.name === l.source),
                         target: nodes.findIndex(n => n.name === l.target),
                         value: l.value

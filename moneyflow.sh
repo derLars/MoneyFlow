@@ -273,4 +273,4 @@ info "Installation finished!"
 info "Moneyflow is running at: http://$CT_IP"
 info "admin user: admin"
 info "admin pass: [set during installation]"
->>>>+++ REPLACE
+

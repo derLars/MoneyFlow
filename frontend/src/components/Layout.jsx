@@ -63,12 +63,12 @@ const Layout = () => {
           <>
             {/* Backdrop */}
             <div 
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/50 z-[55] backdrop-blur-sm"
               onClick={() => setIsMenuOpen(false)}
             />
             
             {/* Menu Panel */}
-            <div className="fixed top-0 left-0 bottom-0 w-72 bg-surface z-50 shadow-2xl p-6 flex flex-col animate-in slide-in-from-left duration-200">
+            <div className="fixed top-0 left-0 bottom-0 w-72 bg-surface z-[60] shadow-2xl p-6 flex flex-col animate-in slide-in-from-left duration-200">
               <div className="flex items-center justify-between mb-8">
                 <span className="text-2xl font-bold text-white">Menu</span>
                 <button 

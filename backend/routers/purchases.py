@@ -212,23 +212,26 @@ async def get_analytics(
     
     # 1. Calculate Summary
     total_spending = 0
+    personal_spending = 0
     num_purchases = len(purchases)
     
     # 2. Prepare Chart & Scatter Data
-    # We want a list of { date: string, cost: number, purchases: [{name, cost}] }
     # Grouped by date
-    daily_stats = {}
+    daily_stats = {} # Total cost per day
+    personal_daily_stats = {} # Personal cost per day
     
     # 3. Prepare Sankey Data
-    # list of { source: string, target: string, value: number }
     sankey_links = []
+    personal_sankey_links = []
     
     for p in purchases:
         p_date = str(p.purchase_date)
         if p_date not in daily_stats:
             daily_stats[p_date] = {"date": p_date, "cost": 0, "purchases": []}
+            personal_daily_stats[p_date] = {"date": p_date, "cost": 0, "purchases": []}
         
         p_total = 0
+        p_personal = 0
         for item in p.items:
             # Filter items if item_search or categories are provided
             if item_search and item_search.lower() not in item.friendly_name.lower() and item_search.lower() not in item.original_name.lower():
@@ -238,7 +241,17 @@ async def get_analytics(
             if cat3 and item.category_level_3 != cat3: continue
 
             item_cost = (float(item.price) * item.quantity) - float(item.discount)
+            
+            # Personal share calculation
+            item_personal = 0
+            is_contributor = any(c.user_id == current_user.user_id for c in item.contributors)
+            if is_contributor:
+                num_contributors = len(item.contributors)
+                if num_contributors > 0:
+                    item_personal = item_cost / num_contributors
+
             p_total += item_cost
+            p_personal += item_personal
             
             # Sankey logic
             c1 = item.category_level_1 or "Uncategorized"
@@ -248,14 +261,54 @@ async def get_analytics(
             
             # Level 1 to Level 2
             sankey_links.append({"source": f"L1: {c1}", "target": f"L2: {c2}", "value": item_cost})
+            personal_sankey_links.append({"source": f"L1: {c1}", "target": f"L2: {c2}", "value": item_personal})
             # Level 2 to Level 3
             sankey_links.append({"source": f"L2: {c2}", "target": f"L3: {c3}", "value": item_cost})
+            personal_sankey_links.append({"source": f"L2: {c2}", "target": f"L3: {c3}", "value": item_personal})
             # Level 3 to Item
             sankey_links.append({"source": f"L3: {c3}", "target": f"Item: {iname}", "value": item_cost})
+            personal_sankey_links.append({"source": f"L3: {c3}", "target": f"Item: {iname}", "value": item_personal})
 
         total_spending += p_total
+        personal_spending += p_personal
+        
         daily_stats[p_date]["cost"] += p_total
         daily_stats[p_date]["purchases"].append({"name": p.purchase_name, "cost": p_total})
+        
+        personal_daily_stats[p_date]["cost"] += p_personal
+        personal_daily_stats[p_date]["purchases"].append({"name": p.purchase_name, "cost": p_personal})
+
+    # Aggregate Sankey links
+    def aggregate_sankey(links):
+        aggregated = {}
+        for link in links:
+            if link["value"] <= 0: continue
+            key = (link["source"], link["target"])
+            aggregated[key] = aggregated.get(key, 0) + link["value"]
+        return [{"source": k[0], "target": k[1], "value": v} for k, v in aggregated.items()]
+
+    final_sankey = aggregate_sankey(sankey_links)
+    final_personal_sankey = aggregate_sankey(personal_sankey_links)
+    
+    chart_data = sorted(daily_stats.values(), key=lambda x: x["date"])
+    personal_chart_data = sorted(personal_daily_stats.values(), key=lambda x: x["date"])
+    
+    avg_cost = total_spending / num_purchases if num_purchases > 0 else 0
+    personal_avg_cost = personal_spending / num_purchases if num_purchases > 0 else 0
+    
+    return {
+        "summary": {
+            "total_spending": total_spending,
+            "personal_spending": personal_spending,
+            "num_purchases": num_purchases,
+            "avg_cost": avg_cost,
+            "personal_avg_cost": personal_avg_cost
+        },
+        "chart_data": chart_data,
+        "personal_chart_data": personal_chart_data,
+        "sankey_data": final_sankey,
+        "personal_sankey_data": final_personal_sankey
+    }
 
     # Aggregate Sankey links
     aggregated_sankey = {}
