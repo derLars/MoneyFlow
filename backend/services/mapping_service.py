@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from sqlalchemy.orm import Session
 import models
 from collections import Counter
@@ -92,4 +92,86 @@ def set_friendly_name(db: Session, original_name: str, friendly_name: str, user_
         db.commit()
     except Exception as e:
         print(f"DEBUG: Error in set_friendly_name: {e}")
+        db.rollback()
+
+def get_category_mapping(db: Session, friendly_name: str, user_id: int) -> Optional[Dict[str, Optional[str]]]:
+    """
+    Retrieves stored categories for a given friendly name.
+    Logic:
+    1. Check user-specific mapping.
+    2. Check global mapping (random from other users).
+    """
+    if not friendly_name:
+        return None
+        
+    try:
+        # Step 1: User-specific
+        mapping = db.query(models.CategoryMapping).filter(
+            models.CategoryMapping.user_id == user_id,
+            models.CategoryMapping.friendly_name == friendly_name
+        ).first()
+        
+        if mapping:
+            return {
+                "category_level_1": mapping.category_level_1,
+                "category_level_2": mapping.category_level_2,
+                "category_level_3": mapping.category_level_3
+            }
+            
+        # Step 2: Global (fallback)
+        global_mapping = db.query(models.CategoryMapping).filter(
+            models.CategoryMapping.friendly_name == friendly_name,
+            models.CategoryMapping.user_id != user_id
+        ).first()
+        
+        if global_mapping:
+            return {
+                "category_level_1": global_mapping.category_level_1,
+                "category_level_2": global_mapping.category_level_2,
+                "category_level_3": global_mapping.category_level_3
+            }
+    except Exception as e:
+        print(f"DEBUG: Error in get_category_mapping: {e}")
+    
+    return None
+
+def set_category_mapping(db: Session, friendly_name: str, categories: Dict[str, Optional[str]], user_id: int):
+    """
+    Stores or updates a category mapping for the user.
+    """
+    if not friendly_name:
+        return
+
+    try:
+        # Check existing
+        mapping = db.query(models.CategoryMapping).filter(
+            models.CategoryMapping.user_id == user_id,
+            models.CategoryMapping.friendly_name == friendly_name
+        ).first()
+        
+        c1 = categories.get("category_level_1")
+        c2 = categories.get("category_level_2")
+        c3 = categories.get("category_level_3")
+
+        # Only update if at least one category is provided?
+        # User requirement: "When he saves... category mapping is updated for all items that have any category."
+        # If user clears categories, should we clear mapping? probably.
+        
+        if mapping:
+            mapping.category_level_1 = c1
+            mapping.category_level_2 = c2
+            mapping.category_level_3 = c3
+        else:
+            new_mapping = models.CategoryMapping(
+                user_id=user_id,
+                friendly_name=friendly_name,
+                category_level_1=c1,
+                category_level_2=c2,
+                category_level_3=c3
+            )
+            db.add(new_mapping)
+        
+        db.commit()
+    except Exception as e:
+        print(f"DEBUG: Error in set_category_mapping: {e}")
         db.rollback()

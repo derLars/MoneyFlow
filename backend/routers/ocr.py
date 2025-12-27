@@ -37,6 +37,13 @@ async def scan_receipt(
                     try:
                         friendly_name = mapping_service.get_friendly_name(db, original_name, current_user.user_id)
                         item["friendly_name"] = friendly_name
+                        
+                        # Auto-fill categories from database
+                        cat_mapping = mapping_service.get_category_mapping(db, friendly_name, current_user.user_id)
+                        if cat_mapping:
+                            item["category_level_1"] = cat_mapping.get("category_level_1")
+                            item["category_level_2"] = cat_mapping.get("category_level_2")
+                            item["category_level_3"] = cat_mapping.get("category_level_3")
                     except Exception as me:
                         print(f"DEBUG: Mapping service error for {original_name}: {me}")
                         item["friendly_name"] = original_name

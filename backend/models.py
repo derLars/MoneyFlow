@@ -18,6 +18,7 @@ class User(Base):
     contributions = relationship("Contributor", back_populates="user")
     categories = relationship("Category", back_populates="user")
     friendly_names = relationship("FriendlyName", back_populates="user")
+    category_mappings = relationship("CategoryMapping", back_populates="user")
     logs = relationship("PurchaseLog", back_populates="user")
 
 class Purchase(Base):
@@ -96,6 +97,18 @@ class FriendlyName(Base):
 
     # Relationships
     user = relationship("User", back_populates="friendly_names")
+
+class CategoryMapping(Base):
+    __tablename__ = "category_mappings"
+    mapping_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    friendly_name = Column(Text, nullable=False, index=True)
+    category_level_1 = Column(Text)
+    category_level_2 = Column(Text)
+    category_level_3 = Column(Text)
+
+    # Relationships
+    user = relationship("User", back_populates="category_mappings")
 
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"

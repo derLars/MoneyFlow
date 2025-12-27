@@ -78,6 +78,18 @@ async def update_purchase(
     
     # Add new items
     for item_in in purchase_in.items:
+        from services import mapping_service
+
+        # Auto-fill categories if empty (Logic: Check DB)
+        if not item_in.category_level_1 and not item_in.category_level_2 and not item_in.category_level_3:
+            fname = item_in.friendly_name or item_in.original_name
+            if fname:
+                cat_map = mapping_service.get_category_mapping(db, fname, current_user.user_id)
+                if cat_map:
+                    item_in.category_level_1 = cat_map.get("category_level_1")
+                    item_in.category_level_2 = cat_map.get("category_level_2")
+                    item_in.category_level_3 = cat_map.get("category_level_3")
+
         db_item = item_repo.add_item_to_purchase(
             db,
             purchase_id=purchase_id,
@@ -98,8 +110,18 @@ async def update_purchase(
             
         # Section 9.2: Storing Friendly Name Logic
         if item_in.friendly_name:
-            from services import mapping_service
             mapping_service.set_friendly_name(db, item_in.original_name, item_in.friendly_name, current_user.user_id)
+        
+        # Update Category Mapping (Learning Logic)
+        if item_in.category_level_1 or item_in.category_level_2 or item_in.category_level_3:
+            fname = item_in.friendly_name or item_in.original_name
+            if fname:
+                categories = {
+                    "category_level_1": item_in.category_level_1,
+                    "category_level_2": item_in.category_level_2,
+                    "category_level_3": item_in.category_level_3
+                }
+                mapping_service.set_category_mapping(db, fname, categories, current_user.user_id)
 
     # 3. Log Action
     purchase_repo.create_purchase_log(db, purchase_id, current_user.user_id, "Purchase updated")
@@ -148,6 +170,18 @@ async def create_purchase(
 
     # 2. Add Items and Contributors
     for item_in in purchase_in.items:
+        from services import mapping_service
+        
+        # Auto-fill categories if empty (Logic: Check DB)
+        if not item_in.category_level_1 and not item_in.category_level_2 and not item_in.category_level_3:
+            fname = item_in.friendly_name or item_in.original_name
+            if fname:
+                cat_map = mapping_service.get_category_mapping(db, fname, current_user.user_id)
+                if cat_map:
+                    item_in.category_level_1 = cat_map.get("category_level_1")
+                    item_in.category_level_2 = cat_map.get("category_level_2")
+                    item_in.category_level_3 = cat_map.get("category_level_3")
+
         db_item = item_repo.add_item_to_purchase(
             db,
             purchase_id=db_purchase.purchase_id,
@@ -168,8 +202,18 @@ async def create_purchase(
             
         # Section 9.2: Storing Friendly Name Logic
         if item_in.friendly_name:
-            from services import mapping_service
             mapping_service.set_friendly_name(db, item_in.original_name, item_in.friendly_name, current_user.user_id)
+
+        # Update Category Mapping (Learning Logic)
+        if item_in.category_level_1 or item_in.category_level_2 or item_in.category_level_3:
+            fname = item_in.friendly_name or item_in.original_name
+            if fname:
+                categories = {
+                    "category_level_1": item_in.category_level_1,
+                    "category_level_2": item_in.category_level_2,
+                    "category_level_3": item_in.category_level_3
+                }
+                mapping_service.set_category_mapping(db, fname, categories, current_user.user_id)
 
     # 3. Log Action
     purchase_repo.create_purchase_log(db, db_purchase.purchase_id, current_user.user_id, "Purchase created")
