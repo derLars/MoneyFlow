@@ -37,26 +37,30 @@ def get_friendly_name(db: Session, original_name: str, user_id: int) -> str:
     2. Check global mappings for all substrings.
     3. Default to original.
     """
-    substrings = generate_all_substrings(original_name)
-    
-    # Step 1: Check user-specific mappings
-    user_mappings = db.query(models.FriendlyName).filter(
-        models.FriendlyName.user_id == user_id,
-        models.FriendlyName.substring.in_(substrings)
-    ).all()
-    
-    winner = find_most_common_friendly_name(user_mappings)
-    if winner:
-        return winner
+    try:
+        substrings = generate_all_substrings(original_name)
         
-    # Step 2: Check global mappings
-    global_mappings = db.query(models.FriendlyName).filter(
-        models.FriendlyName.substring.in_(substrings)
-    ).all()
-    
-    winner = find_most_common_friendly_name(global_mappings)
-    if winner:
-        return winner
+        # Step 1: Check user-specific mappings
+        user_mappings = db.query(models.FriendlyName).filter(
+            models.FriendlyName.user_id == user_id,
+            models.FriendlyName.substring.in_(substrings)
+        ).all()
+        
+        winner = find_most_common_friendly_name(user_mappings)
+        if winner:
+            return winner
+            
+        # Step 2: Check global mappings
+        global_mappings = db.query(models.FriendlyName).filter(
+            models.FriendlyName.substring.in_(substrings),
+            models.FriendlyName.user_id != user_id
+        ).all()
+        
+        winner = find_most_common_friendly_name(global_mappings)
+        if winner:
+            return winner
+    except Exception as e:
+        print(f"DEBUG: Error in get_friendly_name: {e}")
         
     # Step 3: Default
     return original_name
@@ -66,22 +70,26 @@ def set_friendly_name(db: Session, original_name: str, friendly_name: str, user_
     Logic from Section 9.2:
     Store mappings for each substring of the original name.
     """
-    substrings = generate_all_substrings(original_name)
-    
-    for sub in substrings:
-        # Check if this exact mapping already exists for this user
-        existing = db.query(models.FriendlyName).filter(
-            models.FriendlyName.user_id == user_id,
-            models.FriendlyName.substring == sub,
-            models.FriendlyName.friendly_name == friendly_name
-        ).first()
+    try:
+        substrings = generate_all_substrings(original_name)
         
-        if not existing:
-            new_mapping = models.FriendlyName(
-                user_id=user_id,
-                substring=sub,
-                friendly_name=friendly_name
-            )
-            db.add(new_mapping)
-    
-    db.commit()
+        for sub in substrings:
+            # Check if this exact mapping already exists for this user
+            existing = db.query(models.FriendlyName).filter(
+                models.FriendlyName.user_id == user_id,
+                models.FriendlyName.substring == sub,
+                models.FriendlyName.friendly_name == friendly_name
+            ).first()
+            
+            if not existing:
+                new_mapping = models.FriendlyName(
+                    user_id=user_id,
+                    substring=sub,
+                    friendly_name=friendly_name
+                )
+                db.add(new_mapping)
+        
+        db.commit()
+    except Exception as e:
+        print(f"DEBUG: Error in set_friendly_name: {e}")
+        db.rollback()

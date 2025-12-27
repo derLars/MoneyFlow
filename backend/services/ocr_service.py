@@ -25,9 +25,15 @@ async def process_receipts_with_pixtral(files: List[UploadFile]) -> List[Dict]:
 
 def _call_pixtral(images_content: List[str]) -> List[Dict]:
     api_key = os.environ.get("MISTRAL_API_KEY")
+    if api_key:
+        api_key = api_key.strip()
+        
+    # DEBUG: Checking MISTRAL_API_KEY presence
+    print(f"DEBUG: Checking MISTRAL_API_KEY. Exists: {bool(api_key)}, Length: {len(api_key) if api_key else 0}")
+    
     if not api_key:
-        print("MISTRAL_API_KEY not found in environment.")
-        return []
+        # Raise exception to ensure visibility
+        raise Exception("MISTRAL_API_KEY not found in environment")
 
     client = Mistral(api_key=api_key)
     model = "pixtral-12b-2409"
@@ -81,5 +87,5 @@ def _call_pixtral(images_content: List[str]) -> List[Dict]:
 
     except Exception as e:
         print(f"Pixtral Analysis Error: {e}")
-        # Return empty list or handle error appropriately
-        return []
+        # Re-raise the exception so the caller knows something went wrong
+        raise e
