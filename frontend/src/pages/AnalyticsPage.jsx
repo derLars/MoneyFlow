@@ -163,19 +163,29 @@ const AnalyticsPage = () => {
     <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto py-6">
       {/* Sidebar Filters */}
       <aside className={`
-        fixed inset-0 z-40 bg-background lg:relative lg:bg-transparent lg:block lg:w-72 lg:inset-auto
-        ${showFilters ? 'block' : 'hidden'}
+        fixed inset-0 z-[100] lg:z-40 lg:relative lg:bg-transparent lg:block lg:w-72 lg:inset-auto
+        ${showFilters ? 'flex items-center justify-center p-4' : 'hidden'}
       `}>
-        <div className="h-full flex flex-col p-6 lg:p-0">
-          <div className="flex items-center justify-between lg:hidden mb-6">
-            <h2 className="text-xl font-bold text-white">Filters</h2>
-            <button onClick={() => setShowFilters(false)} className="text-secondary hover:text-white"><X /></button>
-          </div>
+        {/* Mobile Backdrop */}
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-md lg:hidden"
+          onClick={() => setShowFilters(false)}
+        />
+        
+        <div className="w-full max-w-sm flex flex-col relative z-10 pointer-events-none lg:h-full lg:p-0">
+          <div className="bg-surface p-6 rounded-[2.5rem] shadow-2xl space-y-6 pointer-events-auto border border-white/10 relative animate-in zoom-in-95 duration-200">
+            {/* Close Button Inside Card (Mobile Only) */}
+            <button 
+              onClick={() => setShowFilters(false)}
+              className="lg:hidden absolute -top-2 -right-2 p-3 bg-primary text-white rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all"
+              aria-label="Close filters"
+            >
+              <X size={20} strokeWidth={3} />
+            </button>
 
-          <div className="bg-surface p-6 rounded-3xl shadow-sm space-y-6">
             <div className="flex items-center gap-2 text-primary font-bold mb-2">
-              <Filter size={18} />
-              <span>Filters</span>
+              <Filter size={20} />
+              <span className="text-lg">Filters</span>
             </div>
 
             {/* Time Filter */}
@@ -309,59 +319,61 @@ const AnalyticsPage = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-grow space-y-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <LayoutDashboard className="text-primary" size={32} />
+      <main className="flex-grow space-y-6 lg:space-y-8">
+        <div className="flex flex-col space-y-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+              <LayoutDashboard className="text-primary" size={28} />
               Analytics
             </h1>
+            
+            <button 
+              onClick={() => setShowFilters(true)}
+              className="lg:hidden flex items-center gap-2 px-3 py-2 bg-surface border border-white/5 rounded-xl text-xs font-bold text-white active:scale-95 transition"
+            >
+              <Filter size={16} />
+              Filters
+            </button>
+          </div>
 
-            <div className="bg-surface border border-white/5 rounded-lg p-1 flex">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            {/* Scope Toggle */}
+            <div className="bg-surface border border-white/5 rounded-xl p-1 flex w-full sm:w-auto">
               <button
                 onClick={() => setScope('personal')}
-                className={`px-4 py-1.5 rounded-md text-[10px] uppercase tracking-wider font-bold transition ${scope === 'personal' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[10px] uppercase tracking-wider font-bold transition ${scope === 'personal' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
               >
                 My Share
               </button>
               <button
                 onClick={() => setScope('total')}
-                className={`px-4 py-1.5 rounded-md text-[10px] uppercase tracking-wider font-bold transition ${scope === 'total' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[10px] uppercase tracking-wider font-bold transition ${scope === 'total' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
               >
                 Total
               </button>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="bg-surface border border-white/5 rounded-lg p-1 flex">
+
+            {/* View Type Toggle */}
+            <div className="bg-surface border border-white/5 rounded-xl p-1 flex w-full sm:w-auto">
               <button
                 onClick={() => setViewType('cumulative')}
-                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'cumulative' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
+                className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider font-bold transition ${viewType === 'cumulative' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
               >
                 Cumulative
               </button>
               <button
                 onClick={() => setViewType('individual')}
-                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'individual' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
+                className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider font-bold transition ${viewType === 'individual' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
               >
                 Individual
               </button>
               <button
                 onClick={() => setViewType('sankey')}
-                className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${viewType === 'sankey' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
+                className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider font-bold transition ${viewType === 'sankey' ? 'bg-primary text-white shadow-sm' : 'text-secondary hover:bg-white/5'}`}
               >
                 Flow
               </button>
             </div>
-
-            <button 
-              onClick={() => setShowFilters(true)}
-              className="lg:hidden flex items-center gap-2 px-4 py-2 bg-surface border border-white/5 rounded-lg text-sm font-bold text-white"
-            >
-              <Filter size={16} />
-              Filters
-            </button>
           </div>
         </div>
 
