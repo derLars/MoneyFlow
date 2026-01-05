@@ -21,7 +21,6 @@ const Layout = () => {
     { name: 'Home', path: '/', icon: <Home size={20} /> },
     { name: 'Purchases', path: '/purchases', icon: <Receipt size={20} /> },
     { name: 'Analytics', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
-    { name: 'Money Flow', path: '/moneyflow', icon: <ArrowRightLeft size={20} /> },
     { name: 'Settings', path: '/settings', icon: <Settings size={20} /> },
   ];
 

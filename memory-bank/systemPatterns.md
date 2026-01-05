@@ -9,33 +9,33 @@ Moneyflow follows a containerized, API-driven architecture.
 - **Storage**: Abstracted storage layer for images (Local/Cloud).
 
 ## Key Technical Decisions
-1. **API-First Design**: Separation of concerns between the frontend UI and backend business logic.
-2. **Containerization**: Deployable via LXC containers for self-hosted isolation.
-3. **OCR & AI Pipeline**:
-   - Image Preprocessing: OpenCV (grayscale, blur, thresholding, contour detection).
-   - OCR: Pytesseract for text extraction.
-   - Analysis: Mistral AI (Small model) for structured item extraction from text.
-4. **Friendly Name Mapping**: Two-tier logic (User-specific then Global) based on substring matching.
-5. **Cost Splitting**: Equal distribution among contributors for simplicity.
-6. **Abstract Storage**: `StorageInterface` class to support multiple providers (Local, Cloud).
-7. **Database Encapsulation**: `database.py` module to isolate SQL logic from API routes.
+1. **Project-Based Architecture**: Top-level entity "Project" encapsulates purchases, participants, and money flow.
+2. **API-First Design**: Separation of concerns between the frontend UI and backend business logic.
+3. **Containerization**: Deployable via LXC containers for self-hosted isolation.
+4. **OCR & AI Pipeline**:
+   - **Pixtral (Vision LLM)**: Direct image-to-JSON extraction of receipt items, replacing complex OpenCV pipelines.
+5. **Friendly Name Mapping**: Two-tier logic (User-specific then Global) based on substring matching.
+6. **Project Visibility**: When a user leaves a project, they are marked as an inactive participant (`is_active = False`). They can no longer see the project or its data. However, their historical involvement (as payer/contributor) is preserved, and they remain selectable in the project context, clearly marked as "(removed)".
+7. **Optimized Money Flow**: Debt calculation uses a settlement algorithm to minimize and simplify transactions within a project group.
 
 ## Design Patterns
-- **Repository Pattern (simplified)**: `database.py` acts as a central repository for all data access.
+- **Repository Pattern (simplified)**: Data access is encapsulated in repository modules (e.g., `purchase_repo.py`).
 - **Dependency Injection**: Used in FastAPI for managing database sessions and authentication.
-- **Interface Segregation**: `StorageInterface` defines clear contracts for storage operations.
-- **State Management**: Zustand on the frontend for global application state.
+- **State Management**: Zustand on the frontend for global application state (Auth, Projects).
 - **Component-Based UI**: Atomic and molecular components in React for reuse.
 
 ## Database Schema (Summary)
-- `users`: Credentials and roles (Admin/User).
-- `purchases`: Metadata (Creator, Payer, Name, Date).
+- `users`: Credentials and roles.
+- `projects`: Metadata (Name, Image, CreatedBy).
+- `project_participants`: Link table (User <-> Project).
+- `purchases`: Metadata (Name, Date, ProjectFK).
 - `items`: Individual products (Original name, Friendly name, Price, Quantity, Categories).
 - `contributors`: Linking users to items for cost-sharing.
+- `saved_filters`: Analytics configurations (UserFK, Name, JSON).
 - `categories`: User-defined classification hierarchy.
 - `friendly_names`: Mapping substrings to standardized names.
 - `purchase_logs`: Audit trail for actions.
 
 ## User Roles & Permissions
-- **User**: Manage own purchases and those where they are a contributor.
+- **User**: Manage own profile, participate in projects. Full management rights over projects they are a participant in.
 - **Administrator**: Universal access, user management, and auditing.

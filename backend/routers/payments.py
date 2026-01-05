@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 import database, auth, models
 import repositories.payment_repo as payment_repo
 from pydantic import BaseModel
@@ -20,6 +20,7 @@ class PaymentCreate(BaseModel):
     amount: float
     payment_date: date
     note: str = None
+    project_id: Optional[int] = None
 
 @router.post("")
 async def create_payment(
@@ -34,15 +35,17 @@ async def create_payment(
         receiver_user_id=payment_in.receiver_user_id,
         amount=payment_in.amount,
         payment_date=payment_in.payment_date,
-        note=payment_in.note
+        note=payment_in.note,
+        project_id=payment_in.project_id
     )
 
 @router.get("")
 async def list_payments(
+    project_id: Optional[int] = None,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    return payment_repo.get_payments_for_user(db, user_id=current_user.user_id)
+    return payment_repo.get_payments_for_user(db, user_id=current_user.user_id, project_id=project_id)
 
 @router.delete("/{payment_id}")
 async def delete_payment(
@@ -65,7 +68,8 @@ async def delete_payment(
 
 @router.get("/balances")
 async def get_balances(
+    project_id: Optional[int] = None,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    return payment_repo.get_money_flow_balances(db, user_id=current_user.user_id)
+    return payment_repo.get_money_flow_balances(db, user_id=current_user.user_id, project_id=project_id)

@@ -25,74 +25,9 @@ import FloatingInput from '../components/ui/FloatingInput';
 import ModernSelect from '../components/ui/ModernSelect';
 import CreatableSelect from '../components/ui/CreatableSelect';
 import TaxRateInput from '../components/ui/TaxRateInput';
+import MultiSelect from '../components/ui/MultiSelect';
 
 // --- Subcomponents ---
-
-const ContributorSelector = ({ allUsers, selectedIds, onChange, label = "Contributors" }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const toggleUser = (userId) => {
-    const updated = selectedIds.includes(userId)
-      ? selectedIds.filter(id => id !== userId)
-      : [...selectedIds, userId];
-    onChange(updated);
-  };
-
-  const selectedNames = allUsers
-    .filter(u => selectedIds.includes(u.user_id))
-    .map(u => u.name)
-    .join(', ');
-
-  return (
-    <div className="relative pt-3" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full text-left px-3 pb-2 pt-2 bg-background border border-white/10 rounded-xl outline-none text-white text-sm min-h-[42px] relative"
-      >
-        <span className="block truncate pr-6">
-          {selectedIds.length > 0 ? selectedNames : 'Select...'}
-        </span>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary">
-          <ChevronDown size={16} />
-        </div>
-      </button>
-      <label className="absolute left-3 top-0 -translate-y-1/2 bg-surface px-1 text-primary text-xs pointer-events-none">
-        {label}
-      </label>
-
-      {isOpen && (
-        <div className="absolute z-50 mt-1 w-full bg-surface rounded-xl shadow-xl border border-white/10 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-          <div className="max-h-60 overflow-y-auto p-1">
-            {allUsers.map(u => (
-              <div
-                key={u.user_id}
-                onClick={() => toggleUser(u.user_id)}
-                className={`
-                  flex items-center justify-between px-4 py-3 cursor-pointer rounded-lg transition-colors
-                  ${selectedIds.includes(u.user_id) ? 'bg-primary/20 text-primary' : 'text-white hover:bg-white/5'}
-                `}
-              >
-                <span className="text-sm font-medium">{u.name}</span>
-                {selectedIds.includes(u.user_id) && <div className="w-2 h-2 rounded-full bg-primary" />}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const SortableItem = ({ 
   item, 
@@ -198,10 +133,10 @@ const SortableItem = ({
           )}
 
           {/* Contributors */}
-          <ContributorSelector
+          <MultiSelect
             label="Split Among"
-            allUsers={allUsers}
-            selectedIds={item.contributors || []}
+            options={allUsers.map(u => ({ value: u.user_id, label: u.name }))}
+            value={item.contributors || []}
             onChange={(updated) => updateItem(item.id, 'contributors', updated)}
           />
 
@@ -262,6 +197,7 @@ const PurchaseEditor = () => {
     purchase_name: '',
     purchase_date: new Date().toISOString().split('T')[0],
     payer_user_id: user?.user_id || '',
+    project_id: null,
     tax_is_added: false,
     discount_is_applied: false,
   });
@@ -285,7 +221,7 @@ const PurchaseEditor = () => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // --- Effects & Data Fetching (Same as before) ---
+  // --- Effects & Data Fetching ---
   useEffect(() => {
     if (!user?.user_id) return;
     const fetchCategories = async (level, setter) => {
@@ -300,19 +236,36 @@ const PurchaseEditor = () => {
   }, [user?.user_id]);
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    if (!purchase.project_id) return;
+    const fetchProjectParticipants = async () => {
       try {
-        const response = await api.get('/purchases/users/all');
-        setAllUsers(response.data);
-      } catch (err) {}
+        const response = await api.get(`/projects/${purchase.project_id}`);
+        // Map ProjectParticipantResponse to the format expected by the editor
+        const participants = response.data.participants.map(p => ({
+          user_id: p.user_id,
+          name: p.user_name + (!p.is_active ? ' (removed)' : ''),
+          is_active: p.is_active
+        }));
+        setAllUsers(participants);
+      } catch (err) {
+        console.error("Failed to fetch project participants", err);
+      }
     };
-    fetchUsers();
-  }, []);
+    fetchProjectParticipants();
+  }, [purchase.project_id]);
 
   useEffect(() => {
     if (!user?.user_id || id) return;
+    
+    // Set project_id from URL if creating new
+    const queryParams = new URLSearchParams(location.search);
+    const projectId = queryParams.get('project_id');
+    if (projectId) {
+        setPurchase(p => ({ ...p, project_id: parseInt(projectId) }));
+    }
+
     if (location.state?.extractedData && items.length === 0) {
-      const { extractedData, receiptImages: images } = location.state;
+      const { extractedData, receiptImages: images, project_id } = location.state;
       const itemsArray = Array.isArray(extractedData) ? extractedData : (extractedData.items || []);
       const mappedItems = itemsArray.map((item, index) => ({
         id: Date.now() + index,
@@ -334,12 +287,13 @@ const PurchaseEditor = () => {
         ...p, 
         payer_user_id: user.user_id,
         purchase_name: `Scan ${new Date().toLocaleDateString()}`,
-        discount_is_applied: hasDiscount
+        discount_is_applied: hasDiscount,
+        project_id: project_id ? parseInt(project_id) : (projectId ? parseInt(projectId) : null)
       }));
     } else if (items.length === 0) {
       addItem();
     }
-  }, [user, id, location.state]);
+  }, [user, id, location.state, location.search]);
 
   useEffect(() => {
     if (id) {
@@ -352,12 +306,26 @@ const PurchaseEditor = () => {
             purchase_name: p.purchase_name,
             purchase_date: p.purchase_date,
             payer_user_id: p.payer_user_id,
+            project_id: p.project_id,
             tax_is_added: p.tax_is_added,
             discount_is_applied: p.discount_is_applied,
           });
           if (p.images) {
             setReceiptImages(p.images.map(img => ({ url: img.url, blob: null })));
           }
+
+          // Merge involved users (including dummies) into selection list
+          if (p.involved_users) {
+            const involved = p.involved_users.map(u => ({ user_id: u.user_id, name: u.name }));
+            setAllUsers(prev => {
+                const map = new Map(prev.map(u => [u.user_id, u]));
+                involved.forEach(u => {
+                    if (!map.has(u.user_id)) map.set(u.user_id, u);
+                });
+                return Array.from(map.values());
+            });
+          }
+
           const mappedItems = p.items.map(item => ({
             id: item.item_id,
             original_name: item.original_name || '',
@@ -458,9 +426,15 @@ const PurchaseEditor = () => {
         }
       }
 
+      if (!purchase.project_id && !id) {
+        alert("Project ID is missing. Please create purchase from a project page.");
+        return;
+      }
+
       const purchaseData = {
         ...purchase,
         payer_user_id: parseInt(purchase.payer_user_id),
+        project_id: parseInt(purchase.project_id),
         items: items.map((item) => ({
           original_name: item.original_name || item.friendly_name || '',
           friendly_name: item.friendly_name || '',
@@ -487,7 +461,12 @@ const PurchaseEditor = () => {
         const newId = response.data.purchase_id;
         await api.post(`/purchases/${newId}/logs`, { message: `Purchase created by user ${user.user_id}` });
       }
-      navigate('/');
+      
+      if (purchase.project_id) {
+        navigate(`/projects/${purchase.project_id}`);
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       alert("Failed to save purchase");
     } finally {
@@ -499,7 +478,11 @@ const PurchaseEditor = () => {
     setActionLoading(true);
     try {
       await api.delete(`/purchases/${id}`);
-      navigate('/');
+      if (purchase.project_id) {
+        navigate(`/projects/${purchase.project_id}`);
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       alert("Failed to delete purchase");
     } finally {
@@ -580,20 +563,19 @@ const PurchaseEditor = () => {
         </div>
 
         {/* Global Contributors with Integrated Apply Button */}
-        <div className="bg-background/50 p-4 rounded-2xl border border-white/5">
-            <div className="flex justify-between items-center mb-1">
-                <span className="text-xs font-bold text-secondary uppercase tracking-wider">Defaults</span>
+        <div className="relative">
+            <div className="absolute right-2 top-0 z-10">
                 <button 
                     onClick={applyGlobalContributors}
-                    className="text-xs font-bold text-primary hover:text-white transition flex items-center gap-1"
+                    className="text-[10px] font-bold text-primary hover:text-white transition flex items-center gap-0.5 uppercase tracking-wider"
                 >
-                    Apply to all items <ChevronRight size={12} />
+                    Apply to all items <ChevronRight size={10} />
                 </button>
             </div>
-            <ContributorSelector 
+            <MultiSelect 
                 label="Default Contributors"
-                allUsers={allUsers}
-                selectedIds={globalContributors}
+                options={allUsers.map(u => ({ value: u.user_id, label: u.name }))}
+                value={globalContributors}
                 onChange={setGlobalContributors}
             />
         </div>

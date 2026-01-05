@@ -12,14 +12,16 @@ import models
 
 def create_purchase(db: Session, creator_user_id: int, payer_user_id: int, 
                     purchase_name: str, purchase_date, 
-                    tax_is_added: bool = False, discount_is_applied: bool = False):
+                    tax_is_added: bool = False, discount_is_applied: bool = False,
+                    project_id: int = None):
     db_purchase = models.Purchase(
         creator_user_id=creator_user_id,
         payer_user_id=payer_user_id,
         purchase_name=purchase_name,
         purchase_date=purchase_date,
         tax_is_added=tax_is_added,
-        discount_is_applied=discount_is_applied
+        discount_is_applied=discount_is_applied,
+        project_id=project_id
     )
     db.add(db_purchase)
     db.commit()
@@ -82,36 +84,42 @@ def create_purchase_log(db: Session, purchase_id: int, user_id: int, message: st
 def get_logs_for_purchase(db: Session, purchase_id: int):
     return db.query(models.PurchaseLog).filter(models.PurchaseLog.purchase_id == purchase_id).order_by(models.PurchaseLog.timestamp.desc()).all()
 
-def get_recent_purchases(db: Session, user_id: int, limit: int = 5):
+def get_recent_purchases(db: Session, user_id: int, limit: int = 5, project_id: int = None):
     """
-    Section 9.4.2: Retrieves the most recent purchases for a specific user.
-    A user is related if they are the creator, the payer or a contributor.
+    Retrieves the most recent purchases for a specific user.
+    A purchase is visible only if the user is a current participant of the project.
     """
-    return db.query(models.Purchase).options(joinedload(models.Purchase.items)).filter(
-        (models.Purchase.creator_user_id == user_id) |
-        (models.Purchase.payer_user_id == user_id) |
-        (models.Purchase.purchase_id.in_(
-            db.query(models.Item.purchase_id).join(models.Contributor).filter(models.Contributor.user_id == user_id)
-        ))
-    ).order_by(models.Purchase.purchase_date.desc()).limit(limit).all()
+    query = db.query(models.Purchase).options(joinedload(models.Purchase.items)).join(models.Project)
+    
+    if project_id:
+        query = query.filter(models.Purchase.project_id == project_id)
+    
+    # Enforcement: Only show purchases from projects where user is an active participant
+    query = query.join(models.ProjectParticipant).filter(
+        models.ProjectParticipant.user_id == user_id,
+        models.ProjectParticipant.is_active == True
+    )
+        
+    return query.order_by(models.Purchase.purchase_date.desc()).limit(limit).all()
 
-def get_purchases_for_user(db: Session, user_id: int, search: str = None, sort_by: str = "date_desc"):
+def get_purchases_for_user(db: Session, user_id: int, search: str = None, sort_by: str = "date_desc", project_id: int = None):
     """
-    Section 9.4.2: Fetches all purchases where the user is either the creator, the payer or a contributor, 
-    with optional filtering and sorting. 
+    Fetches purchases where the user is currently a participant of the project.
     Enhanced Search: Includes items and categories.
     """
     # Use distinct to avoid duplicate purchases when multiple items match
-    query = db.query(models.Purchase).options(joinedload(models.Purchase.items)).distinct().join(models.Item, isouter=True)
+    query = db.query(models.Purchase).options(joinedload(models.Purchase.items)).distinct()
+    query = query.join(models.Item, isouter=True).join(models.Project).join(models.ProjectParticipant)
     
-    # Base authorization filter
+    # Enforcement: Only projects where user is an active participant
     query = query.filter(
-        (models.Purchase.creator_user_id == user_id) |
-        (models.Purchase.payer_user_id == user_id) |
-        (models.Purchase.purchase_id.in_(
-            db.query(models.Item.purchase_id).join(models.Contributor).filter(models.Contributor.user_id == user_id)
-        ))
+        models.ProjectParticipant.user_id == user_id,
+        models.ProjectParticipant.is_active == True
     )
+
+    # Filter by specific project if provided
+    if project_id:
+        query = query.filter(models.Purchase.project_id == project_id)
 
     if search:
         search_filter = or_(
@@ -145,21 +153,24 @@ def get_analytics_data(db: Session, user_id: int,
                        end_date: str = None,
                        search: str = None,
                        item_search: str = None,
-                       cat1: str = None, cat2: str = None, cat3: str = None):
+                       cat1: str = None, cat2: str = None, cat3: str = None,
+                       project_id: int = None):
     """
-    Section 5.8 Refinement: Retrieves analytics data based on various filters.
-    Supports Period, Month, Year, and All modes.
+    Retrieves analytics data. 
+    Enforcement: Only show purchases from projects where user is a participant.
     """
-    # 1. Base query: Distinct purchases authorized for the user
+    # 1. Base query: Distinct purchases in projects where user is participant
     query = db.query(models.Purchase).distinct().join(models.Item, isouter=True)
+    query = query.join(models.Project).join(models.ProjectParticipant)
     
+    # Filter by user participation (must be active)
     query = query.filter(
-        (models.Purchase.creator_user_id == user_id) |
-        (models.Purchase.payer_user_id == user_id) |
-        (models.Purchase.purchase_id.in_(
-            db.query(models.Item.purchase_id).join(models.Contributor).filter(models.Contributor.user_id == user_id)
-        ))
+        models.ProjectParticipant.user_id == user_id,
+        models.ProjectParticipant.is_active == True
     )
+    
+    if project_id:
+        query = query.filter(models.Purchase.project_id == project_id)
 
     # 2. Time Filtering
     if time_frame == "period":

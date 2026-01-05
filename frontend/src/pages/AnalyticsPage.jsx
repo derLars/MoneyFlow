@@ -7,7 +7,9 @@ import {
   LayoutDashboard,
   TrendingUp, 
   ShoppingBag, 
-  Calculator
+  Calculator,
+  Save,
+  FolderOpen
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -24,6 +26,7 @@ import {
   Layer
 } from 'recharts';
 import api from '../api/axios';
+import useProjectStore from '../store/projectStore';
 
 // Theme constants
 const COLORS = {
@@ -66,6 +69,7 @@ const SankeyNode = ({ x, y, width, height, index, payload, containerWidth }) => 
 };
 
 const AnalyticsPage = () => {
+  const { projects, fetchProjects } = useProjectStore();
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [viewType, setViewType] = useState('cumulative');
@@ -78,6 +82,10 @@ const AnalyticsPage = () => {
     personal_sankey_data: []
   });
 
+  const [savedFilters, setSavedFilters] = useState([]);
+  const [newFilterName, setNewFilterName] = useState('');
+  const [showSaveFilter, setShowSaveFilter] = useState(false);
+
   const [filters, setFilters] = useState({
     time_frame: 'year',
     start_date: new Date().toISOString().split('T')[0],
@@ -87,6 +95,7 @@ const AnalyticsPage = () => {
     cat1: '',
     cat2: '',
     cat3: '',
+    project_id: '' // Empty string for All
   });
 
   const getCumulativeData = (data) => {
@@ -105,7 +114,10 @@ const AnalyticsPage = () => {
   const handleAnalyze = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/purchases/stats/analytics', { params: filters });
+      const params = { ...filters };
+      if (params.project_id === '') delete params.project_id;
+      
+      const response = await api.get('/purchases/stats/analytics', { params });
       setStats(response.data);
     } catch (err) {
       console.error('Failed to fetch analytics', err);
@@ -116,8 +128,48 @@ const AnalyticsPage = () => {
 
   // Initial load
   useEffect(() => {
+    fetchProjects();
+    fetchSavedFilters();
     handleAnalyze();
   }, []);
+
+  const fetchSavedFilters = async () => {
+    try {
+      const res = await api.get('/analytics/filters');
+      setSavedFilters(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSaveFilter = async () => {
+    if (!newFilterName) return;
+    try {
+      await api.post('/analytics/filters', {
+        name: newFilterName,
+        configuration: filters
+      });
+      setNewFilterName('');
+      setShowSaveFilter(false);
+      fetchSavedFilters();
+    } catch (err) {
+      alert("Failed to save filter");
+    }
+  };
+
+  const loadFilter = (filter) => {
+    setFilters(filter.configuration);
+    // Trigger analyze? Or let useEffect depend on filters? 
+    // Usually explicit trigger is better to avoid bouncing.
+    // But we need to update UI. 
+    // We can call handleAnalyze() after state update if we use a ref or effect.
+    // For simplicity, let's just set state and user clicks Analyze, or use effect on filters?
+    // Let's stick to manual Analyze click to be safe, or call handleAnalyze with new filters.
+    // Actually, setting state is async.
+  };
+
+  // Refetch when project changes (optional, or user clicks analyze)
+  // Let's make Analyze button primary action.
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -173,7 +225,7 @@ const AnalyticsPage = () => {
         />
         
         <div className="w-full max-w-sm flex flex-col relative z-10 pointer-events-none lg:h-full lg:p-0">
-          <div className="bg-surface p-6 rounded-[2.5rem] shadow-2xl space-y-6 pointer-events-auto border border-white/10 relative animate-in zoom-in-95 duration-200">
+          <div className="bg-surface p-6 rounded-[2.5rem] shadow-2xl space-y-6 pointer-events-auto border border-white/10 relative animate-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh] lg:max-h-none custom-scrollbar">
             {/* Close Button Inside Card (Mobile Only) */}
             <button 
               onClick={() => setShowFilters(false)}
@@ -183,9 +235,73 @@ const AnalyticsPage = () => {
               <X size={20} strokeWidth={3} />
             </button>
 
-            <div className="flex items-center gap-2 text-primary font-bold mb-2">
-              <Filter size={20} />
-              <span className="text-lg">Filters</span>
+            <div className="flex items-center justify-between text-primary font-bold mb-2">
+              <div className="flex items-center gap-2">
+                <Filter size={20} />
+                <span className="text-lg">Filters</span>
+              </div>
+              <button 
+                onClick={() => setShowSaveFilter(!showSaveFilter)} 
+                className="text-xs bg-white/5 hover:bg-white/10 p-2 rounded-lg text-white transition"
+                title="Save current filter"
+              >
+                <Save size={16} />
+              </button>
+            </div>
+
+            {showSaveFilter && (
+              <div className="bg-white/5 p-3 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-2">
+                <input 
+                  type="text" 
+                  placeholder="Filter Name" 
+                  className="w-full p-2 bg-background rounded-lg text-xs text-white outline-none"
+                  value={newFilterName}
+                  onChange={e => setNewFilterName(e.target.value)}
+                />
+                <button 
+                  onClick={handleSaveFilter}
+                  disabled={!newFilterName}
+                  className="w-full py-1.5 bg-primary text-white text-xs font-bold rounded-lg disabled:opacity-50"
+                >
+                  Save
+                </button>
+              </div>
+            )}
+
+            {savedFilters.length > 0 && (
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider font-bold text-secondary mb-2">Saved Filters</label>
+                <select 
+                  className="w-full p-2 bg-background rounded-md text-sm outline-none text-white appearance-none cursor-pointer"
+                  onChange={(e) => {
+                    const filter = savedFilters.find(f => f.filter_id.toString() === e.target.value);
+                    if (filter) loadFilter(filter);
+                  }}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Load a filter...</option>
+                  {savedFilters.map(f => (
+                    <option key={f.filter_id} value={f.filter_id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <hr className="border-white/5" />
+
+            {/* Project Selector */}
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-secondary mb-2">Project</label>
+              <select 
+                className="w-full p-2 bg-background rounded-md text-sm outline-none text-white appearance-none cursor-pointer"
+                value={filters.project_id}
+                onChange={(e) => setFilters({ ...filters, project_id: e.target.value })}
+              >
+                <option value="">All Projects</option>
+                {projects.map(p => (
+                  <option key={p.project_id} value={p.project_id}>{p.name}</option>
+                ))}
+              </select>
             </div>
 
             {/* Time Filter */}

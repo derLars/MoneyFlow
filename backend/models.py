@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Date, DateTime, Text, Numeric
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Date, DateTime, Text, Numeric, JSON
 from sqlalchemy.orm import relationship
 from db_base import Base
 import datetime
@@ -9,6 +9,7 @@ class User(Base):
     name = Column(String(30), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     administrator = Column(Boolean, default=False)
+    is_dummy = Column(Boolean, default=False, nullable=False) # For removed project participants
     default_tax_rate = Column(Numeric(5, 2), default=0.00)
     common_tax_rates = Column(String(255), default="0,20") # Comma-separated list
 
@@ -20,10 +21,50 @@ class User(Base):
     friendly_names = relationship("FriendlyName", back_populates="user")
     category_mappings = relationship("CategoryMapping", back_populates="user")
     logs = relationship("PurchaseLog", back_populates="user")
+    projects = relationship("ProjectParticipant", back_populates="user")
+    saved_filters = relationship("SavedFilter", back_populates="user")
+
+class Project(Base):
+    __tablename__ = "projects"
+    project_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text)
+    image_path = Column(Text)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_by_user_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+
+    # Relationships
+    participants = relationship("ProjectParticipant", back_populates="project", cascade="all, delete-orphan")
+    purchases = relationship("Purchase", back_populates="project", cascade="all, delete-orphan")
+    payments = relationship("Payment", back_populates="project", cascade="all, delete-orphan")
+
+class ProjectParticipant(Base):
+    __tablename__ = "project_participants"
+    participant_id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.project_id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    joined_at = Column(DateTime, default=datetime.datetime.utcnow)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    # Relationships
+    project = relationship("Project", back_populates="participants")
+    user = relationship("User", back_populates="projects")
+
+class SavedFilter(Base):
+    __tablename__ = "saved_filters"
+    filter_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    configuration = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="saved_filters")
 
 class Purchase(Base):
     __tablename__ = "purchases"
     purchase_id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.project_id"), nullable=True) # Nullable for migration, but enforced later
     creator_user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     payer_user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     purchase_name = Column(String(255), nullable=False)
@@ -32,6 +73,7 @@ class Purchase(Base):
     discount_is_applied = Column(Boolean, default=False)
 
     # Relationships
+    project = relationship("Project", back_populates="purchases")
     creator = relationship("User", back_populates="created_purchases", foreign_keys=[creator_user_id])
     payer = relationship("User", back_populates="paid_purchases", foreign_keys=[payer_user_id])
     items = relationship("Item", back_populates="purchase", cascade="all, delete-orphan")
@@ -131,6 +173,7 @@ class ReceiptImage(Base):
 class Payment(Base):
     __tablename__ = "payments"
     payment_id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.project_id"), nullable=True) # Nullable for migration
     creator_user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     payer_user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     receiver_user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
@@ -139,6 +182,7 @@ class Payment(Base):
     note = Column(Text)
 
     # Relationships
+    project = relationship("Project", back_populates="payments")
     creator = relationship("User", foreign_keys=[creator_user_id])
     payer = relationship("User", foreign_keys=[payer_user_id])
     receiver = relationship("User", foreign_keys=[receiver_user_id])

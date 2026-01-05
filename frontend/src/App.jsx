@@ -11,6 +11,7 @@ import AnalyticsPage from './pages/AnalyticsPage'
 import UserManagement from './pages/UserManagement'
 import SettingsPage from './pages/SettingsPage'
 import MoneyFlowPage from './pages/MoneyFlowPage'
+import ProjectDetailsPage from './pages/ProjectDetailsPage'
 
 function App() {
   const { user, isAuthenticated, checkAuth, loading } = useAuthStore()
@@ -40,6 +41,7 @@ function App() {
         element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}
       >
         <Route index element={<MainPage />} />
+        <Route path="projects/:projectId" element={<ProjectDetailsPage />} />
         <Route path="scan" element={<ScanReceiptPage />} />
         <Route path="purchases" element={<PurchaseList />} />
         <Route path="create-purchase" element={<PurchaseEditor />} />

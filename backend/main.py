@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from routers import auth as auth_router, purchases, ocr, payments, categories, mapping # RENAMED to avoid conflict
+from routers import auth as auth_router, purchases, ocr, payments, categories, mapping, projects, search, analytics # RENAMED to avoid conflict
 import storage
 import database, models, auth # FIXED missing import
 from sqlalchemy.orm import Session
@@ -52,6 +52,9 @@ app.include_router(ocr.router, prefix="/api")
 app.include_router(payments.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")
 app.include_router(mapping.router, prefix="/api")
+app.include_router(projects.router, prefix="/api")
+app.include_router(search.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
 
 @app.get("/api/purchases/users/all")
 async def get_all_users_for_purchases(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):

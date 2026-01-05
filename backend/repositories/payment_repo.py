@@ -1,5 +1,6 @@
 import sys
 import os
+from collections import defaultdict
 
 # Ensure the parent directory is in the path so we can import models/database etc
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -9,14 +10,15 @@ import models
 import repositories.user_repo as user_repo
 
 def create_payment(db: Session, creator_user_id: int, payer_user_id: int, receiver_user_id: int, 
-                   amount: float, payment_date, note: str = None):
+                   amount: float, payment_date, note: str = None, project_id: int = None):
     db_payment = models.Payment(
         creator_user_id=creator_user_id,
         payer_user_id=payer_user_id,
         receiver_user_id=receiver_user_id,
         amount=amount,
         payment_date=payment_date,
-        note=note
+        note=note,
+        project_id=project_id
     )
     db.add(db_payment)
     db.commit()
@@ -26,11 +28,15 @@ def create_payment(db: Session, creator_user_id: int, payer_user_id: int, receiv
 def get_payment_by_id(db: Session, payment_id: int):
     return db.query(models.Payment).filter(models.Payment.payment_id == payment_id).first()
 
-def get_payments_for_user(db: Session, user_id: int):
-    return db.query(models.Payment).filter(
+def get_payments_for_user(db: Session, user_id: int, project_id: int = None):
+    query = db.query(models.Payment).filter(
         (models.Payment.payer_user_id == user_id) |
         (models.Payment.receiver_user_id == user_id)
-    ).order_by(models.Payment.payment_date.desc()).all()
+    )
+    if project_id:
+        query = query.filter(models.Payment.project_id == project_id)
+        
+    return query.order_by(models.Payment.payment_date.desc()).all()
 
 def delete_payment(db: Session, payment_id: int):
     db_payment = db.query(models.Payment).filter(models.Payment.payment_id == payment_id).first()
@@ -40,77 +46,122 @@ def delete_payment(db: Session, payment_id: int):
         return True
     return False
 
-def get_money_flow_balances(db: Session, user_id: int = None):
+def get_money_flow_balances(db: Session, user_id: int = None, project_id: int = None):
     """
-    Calculates the net balance between all users.
-    1. Sum contributions from purchases (Items -> Contributors)
-    2. Sum payments made/received
+    Calculates optimized net balances and settlement plan.
+    Enforcement: Only include projects where user is an ACTIVE participant.
+    However, the calculation within the project includes all historical participants.
     """
     users = user_repo.get_all_users(db)
-    balances = {} # (user_id_a, user_id_b) -> amount (positive means a owes b)
+    user_map = {u.user_id: u.name for u in users}
+    
+    # Net Balance: Positive = Creditor (Owed money), Negative = Debtor (Owes money)
+    net_balances = defaultdict(float)
 
-    def get_key(id1, id2):
-        return tuple(sorted((id1, id2)))
+    # Security Check: If project_id provided, ensure user_id is an active participant
+    if project_id and user_id:
+        is_active = db.query(models.ProjectParticipant).filter(
+            models.ProjectParticipant.project_id == project_id,
+            models.ProjectParticipant.user_id == user_id,
+            models.ProjectParticipant.is_active == True
+        ).first()
+        if not is_active:
+            return []
 
-    # Step 1: Contribution from purchases
-    # We iterate over all items and their contributors
-    items = db.query(models.Item).all()
+    # 1. Process Purchases (Items)
+    # If calculating for a specific project, we don't filter items by user participation record
+    # because we want to see debts of removed users too.
+    item_query = db.query(models.Item).join(models.Purchase)
+    
+    if project_id:
+        item_query = item_query.filter(models.Purchase.project_id == project_id)
+    else:
+        # Global view: only projects where user is an active participant
+        item_query = item_query.join(models.Project).join(models.ProjectParticipant).filter(
+            models.ProjectParticipant.user_id == user_id,
+            models.ProjectParticipant.is_active == True
+        )
+    items = item_query.all()
+    
     for item in items:
         purchase = item.purchase
         payer_id = purchase.payer_user_id
         contributors = item.contributors
         if not contributors:
             continue
-        
-        # Section 10.1: Equal distribution
-        share = float(item.price * item.quantity) / len(contributors)
-        
-        for cont in contributors:
-            if cont.user_id != payer_id:
-                # Contributor owes Payer
-                key = get_key(cont.user_id, payer_id)
-                if key not in balances: balances[key] = 0.0
-                
-                # If cont.user_id is the first in key, it's positive debt
-                if cont.user_id == key[0]:
-                    balances[key] += share
-                else:
-                    balances[key] -= share
-
-    # Step 2: Offsetting with payments
-    payments = db.query(models.Payment).all()
-    for p in payments:
-        key = get_key(p.payer_user_id, p.receiver_user_id)
-        if key not in balances: balances[key] = 0.0
-        
-        # If p.payer_user_id is the first in key, it reduces his debt (negative change)
-        if p.payer_user_id == key[0]:
-            balances[key] -= float(p.amount)
-        else:
-            balances[key] += float(p.amount)
-
-    # Format result for frontend
-    result = []
-    user_map = {u.user_id: u.name for u in users}
-    for (id1, id2), amount in balances.items():
-        if abs(amount) < 0.01: continue
-        
-        # Rule 2: Filter by user_id if provided
-        if user_id is not None and user_id not in [id1, id2]:
-            continue
-
-        if amount > 0:
-            debtor_id, creditor_id = id1, id2
-        else:
-            debtor_id, creditor_id = id2, id1
-            amount = abs(amount)
             
-        result.append({
-            "user_a_id": debtor_id,
-            "user_a_name": user_map.get(debtor_id),
-            "user_b_id": creditor_id,
-            "user_b_name": user_map.get(creditor_id),
-            "amount": round(amount, 2)
-        })
+        item_total = (float(item.price) * item.quantity) - float(item.discount)
+        share = item_total / len(contributors)
         
+        # Payer paid the full amount -> Credit
+        net_balances[payer_id] += item_total
+        
+        # Each contributor consumed a share -> Debit
+        for cont in contributors:
+            net_balances[cont.user_id] -= share
+
+    # 2. Process Direct Payments
+    # Direct payments are also project-scoped.
+    payment_query = db.query(models.Payment)
+    
+    if project_id:
+        payment_query = payment_query.filter(models.Payment.project_id == project_id)
+    else:
+        # Global view: only projects where user is an active participant
+        payment_query = payment_query.join(models.Project).join(models.ProjectParticipant).filter(
+            models.ProjectParticipant.user_id == user_id,
+            models.ProjectParticipant.is_active == True
+        )
+    payments = payment_query.all()
+    
+    for p in payments:
+        # Payer gave money -> Credit (reduced debt or increased credit)
+        net_balances[p.payer_user_id] += float(p.amount)
+        # Receiver got money -> Debit (reduced credit or increased debt)
+        net_balances[p.receiver_user_id] -= float(p.amount)
+
+    # 3. Separate Debtors and Creditors
+    debtors = []
+    creditors = []
+    
+    for uid, balance in net_balances.items():
+        if balance < -0.01:
+            debtors.append({'id': uid, 'amount': abs(balance)})
+        elif balance > 0.01:
+            creditors.append({'id': uid, 'amount': balance})
+            
+    # Sort by magnitude to minimize transactions (Greedy approach)
+    debtors.sort(key=lambda x: x['amount'], reverse=True)
+    creditors.sort(key=lambda x: x['amount'], reverse=True)
+    
+    result = []
+    i = 0
+    j = 0
+    
+    while i < len(debtors) and j < len(creditors):
+        debtor = debtors[i]
+        creditor = creditors[j]
+        
+        amount = min(debtor['amount'], creditor['amount'])
+        
+        # Record settlement
+        # Filter by user_id if provided (for My Balances view)
+        if user_id is None or user_id == debtor['id'] or user_id == creditor['id']:
+            result.append({
+                "user_a_id": debtor['id'],
+                "user_a_name": user_map.get(debtor['id'], "Unknown"),
+                "user_b_id": creditor['id'],
+                "user_b_name": user_map.get(creditor['id'], "Unknown"),
+                "amount": round(amount, 2)
+            })
+        
+        # Update remaining amounts
+        debtor['amount'] -= amount
+        creditor['amount'] -= amount
+        
+        if debtor['amount'] < 0.01:
+            i += 1
+        if creditor['amount'] < 0.01:
+            j += 1
+            
     return result

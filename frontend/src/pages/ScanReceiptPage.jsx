@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Upload, X, RotateCw, Crop, Loader2, Check, RotateCcw } from 'lucide-react';
 import Cropper from 'react-cropper';
 import 'cropperjs/dist/cropper.css';
@@ -156,6 +156,7 @@ const ScanReceiptPage = () => {
   const [error, setError] = useState(null);
   const [editingImage, setEditingImage] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -238,10 +239,14 @@ const ScanReceiptPage = () => {
       }));
 
       // Redirect to PurchaseEditor with the extracted data and the images
+      const queryParams = new URLSearchParams(location.search);
+      const projectId = queryParams.get('project_id');
+
       navigate('/create-purchase', { 
         state: { 
           extractedData: response.data,
-          receiptImages: receiptImages
+          receiptImages: receiptImages,
+          project_id: projectId
         } 
       });
     } catch (err) {

@@ -14,6 +14,7 @@ import models
 import repositories.purchase_repo as purchase_repo
 import repositories.item_repo as item_repo
 import repositories.category_repo as category_repo
+import repositories.project_repo as project_repo
 import auth
 from pydantic import BaseModel
 from datetime import date
@@ -36,6 +37,7 @@ class PurchaseCreate(BaseModel):
     purchase_name: str
     purchase_date: date
     payer_user_id: int
+    project_id: int
     tax_is_added: bool = False
     discount_is_applied: bool = False
     items: List[ItemBase]
@@ -51,9 +53,43 @@ async def update_purchase(
     if not db_purchase:
         raise HTTPException(status_code=404, detail="Purchase not found")
         
-    # Permission check (Section 7)
-    if not current_user.administrator and db_purchase.creator_user_id != current_user.user_id:
+    # Permission check (Revised: Participants can edit)
+    is_authorized = False
+    if current_user.administrator:
+        is_authorized = True
+    elif db_purchase.project_id:
+        # Check if user is participant of the project
+        project = db_purchase.project
+        if project and any(p.user_id == current_user.user_id for p in project.participants):
+            is_authorized = True
+    elif db_purchase.creator_user_id == current_user.user_id:
+        is_authorized = True
+        
+    if not is_authorized:
         raise HTTPException(status_code=403, detail="Not authorized to edit this purchase")
+
+    # Verify project membership if changing project (though typically not allowed or rare)
+    # Verify project membership and participant validity
+    project = project_repo.get_project_by_id(db, purchase_in.project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    is_participant = any(p.user_id == current_user.user_id for p in project.participants)
+    if not is_participant and not current_user.administrator:
+        raise HTTPException(status_code=403, detail="Not authorized for this project")
+
+    # Validate Payer and Contributors are participants
+    participant_ids = [p.user_id for p in project.participants]
+    if purchase_in.payer_user_id not in participant_ids:
+        raise HTTPException(status_code=400, detail="Selected payer is not a participant of this project")
+    
+    for item in purchase_in.items:
+        for contributor_id in item.contributors:
+            if contributor_id not in participant_ids:
+                raise HTTPException(status_code=400, detail=f"Selected contributor (ID: {contributor_id}) is not a participant of this project")
+
+    if purchase_in.project_id != db_purchase.project_id:
+        db_purchase.project_id = purchase_in.project_id
 
     # 1. Update Metadata
     purchase_repo.update_purchase(
@@ -145,6 +181,25 @@ async def create_purchase(
         print(f"DEBUG: Purchase Data Validation Error: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid purchase data: {str(e)}")
 
+    # Verify project access and participant validity
+    project = project_repo.get_project_by_id(db, purchase_in.project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    is_participant = any(p.user_id == current_user.user_id for p in project.participants)
+    if not is_participant and not current_user.administrator:
+        raise HTTPException(status_code=403, detail="Not authorized for this project")
+
+    # Validate Payer and Contributors are participants
+    participant_ids = [p.user_id for p in project.participants]
+    if purchase_in.payer_user_id not in participant_ids:
+        raise HTTPException(status_code=400, detail="Selected payer is not a participant of this project")
+    
+    for item in purchase_in.items:
+        for contributor_id in item.contributors:
+            if contributor_id not in participant_ids:
+                raise HTTPException(status_code=400, detail=f"Selected contributor (ID: {contributor_id}) is not a participant of this project")
+
     # 1. Create Purchase Metadata
     db_purchase = purchase_repo.create_purchase(
         db,
@@ -153,7 +208,8 @@ async def create_purchase(
         purchase_name=purchase_in.purchase_name,
         purchase_date=purchase_in.purchase_date,
         tax_is_added=purchase_in.tax_is_added,
-        discount_is_applied=purchase_in.discount_is_applied
+        discount_is_applied=purchase_in.discount_is_applied,
+        project_id=purchase_in.project_id
     )
 
     # 1b. Handle Images
@@ -241,6 +297,7 @@ async def get_analytics(
     cat1: Optional[str] = None,
     cat2: Optional[str] = None,
     cat3: Optional[str] = None,
+    project_id: Optional[int] = None,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -251,7 +308,8 @@ async def get_analytics(
         end_date=end_date,
         search=search,
         item_search=item_search,
-        cat1=cat1, cat2=cat2, cat3=cat3
+        cat1=cat1, cat2=cat2, cat3=cat3,
+        project_id=project_id
     )
     
     # 1. Calculate Summary
@@ -354,28 +412,6 @@ async def get_analytics(
         "personal_sankey_data": final_personal_sankey
     }
 
-    # Aggregate Sankey links
-    aggregated_sankey = {}
-    for link in sankey_links:
-        key = (link["source"], link["target"])
-        aggregated_sankey[key] = aggregated_sankey.get(key, 0) + link["value"]
-    
-    final_sankey = [{"source": k[0], "target": k[1], "value": v} for k, v in aggregated_sankey.items()]
-    
-    chart_data = sorted(daily_stats.values(), key=lambda x: x["date"])
-    
-    avg_cost = total_spending / num_purchases if num_purchases > 0 else 0
-    
-    return {
-        "summary": {
-            "total_spending": total_spending,
-            "num_purchases": num_purchases,
-            "avg_cost": avg_cost
-        },
-        "chart_data": chart_data,
-        "sankey_data": final_sankey
-    }
-
 @router.get("/summary")
 async def get_summary_stats(
     db: Session = Depends(database.get_db),
@@ -387,6 +423,7 @@ async def get_summary_stats(
     first_of_month = date(today.year, today.month, 1)
     
     # We use analytics logic to get purchases where the user is involved (creator, payer, or contributor)
+    # Global summary, so no project_id
     purchases = purchase_repo.get_analytics_data(
         db, user_id=current_user.user_id,
         time_frame="custom",
@@ -411,10 +448,11 @@ async def get_summary_stats(
 
 @router.get("/recent")
 async def get_recent_purchases(
+    project_id: Optional[int] = None,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    purchases = purchase_repo.get_recent_purchases(db, user_id=current_user.user_id)
+    purchases = purchase_repo.get_recent_purchases(db, user_id=current_user.user_id, project_id=project_id)
     return [
         {
             "purchase_id": p.purchase_id,
@@ -425,6 +463,7 @@ async def get_recent_purchases(
             "creator_user_id": p.creator_user_id,
             "tax_is_added": p.tax_is_added,
             "discount_is_applied": p.discount_is_applied,
+            "project_id": p.project_id,
             "items": [
                 {
                     "item_id": item.item_id,
@@ -465,6 +504,15 @@ async def get_purchase(
        not is_contributor:
         raise HTTPException(status_code=403, detail="Not authorized to view this purchase")
     
+    # Identify involved users (payer, creator, contributors)
+    involved_user_ids = {purchase.payer_user_id, purchase.creator_user_id}
+    for item in purchase.items:
+        for c in item.contributors:
+            involved_user_ids.add(c.user_id)
+    
+    users = db.query(models.User).filter(models.User.user_id.in_(involved_user_ids)).all()
+    involved_users = [{"user_id": u.user_id, "name": u.name, "is_dummy": u.is_dummy} for u in users]
+
     # Serialize purchase with properly formatted images
     from storage import get_storage
     storage_interface = get_storage()
@@ -475,8 +523,10 @@ async def get_purchase(
         "purchase_date": str(purchase.purchase_date),
         "payer_user_id": purchase.payer_user_id,
         "creator_user_id": purchase.creator_user_id,
+        "involved_users": involved_users,
         "tax_is_added": purchase.tax_is_added,
         "discount_is_applied": purchase.discount_is_applied,
+        "project_id": purchase.project_id,
         "images": [
             {
                 "url": storage_interface.get_file_url(img.file_path),
@@ -513,9 +563,19 @@ async def delete_purchase(
     if not purchase:
         raise HTTPException(status_code=404, detail="Purchase not found")
         
-    # Permission check for deletion
-    if not current_user.administrator and purchase.creator_user_id != current_user.user_id:
-        raise HTTPException(status_code=403, detail="Only the creator or admin can delete a purchase")
+    # Permission check for deletion (Revised: Participants can delete)
+    is_authorized = False
+    if current_user.administrator:
+        is_authorized = True
+    elif purchase.project_id:
+        project = purchase.project
+        if project and any(p.user_id == current_user.user_id for p in project.participants):
+            is_authorized = True
+    elif purchase.creator_user_id == current_user.user_id:
+        is_authorized = True
+        
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this purchase")
         
     purchase_repo.delete_purchase(db, purchase_id)
     return {"status": "success"}
@@ -541,10 +601,13 @@ async def get_logs(
 async def list_purchases(
     search: Optional[str] = None,
     sort_by: str = "date_desc",
+    project_id: Optional[int] = None,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    purchases = purchase_repo.get_purchases_for_user(db, user_id=current_user.user_id, search=search, sort_by=sort_by)
+    purchases = purchase_repo.get_purchases_for_user(
+        db, user_id=current_user.user_id, search=search, sort_by=sort_by, project_id=project_id
+    )
     return [
         {
             "purchase_id": p.purchase_id,
@@ -555,6 +618,7 @@ async def list_purchases(
             "creator_user_id": p.creator_user_id,
             "tax_is_added": p.tax_is_added,
             "discount_is_applied": p.discount_is_applied,
+            "project_id": p.project_id,
             "items": [
                 {
                     "item_id": item.item_id,

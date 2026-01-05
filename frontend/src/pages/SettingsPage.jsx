@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, 
   Lock, 
@@ -11,7 +11,9 @@ import {
   Percent,
   Plus,
   X,
-  Info
+  Info,
+  Filter,
+  Trash2
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import api from '../api/axios';
@@ -36,6 +38,32 @@ const SettingsPage = () => {
     user?.common_tax_rates ? user.common_tax_rates.split(',').map(r => r.trim()).filter(r => r !== '') : []
   );
   const [newRate, setNewRate] = useState('');
+
+  // Saved Filters State
+  const [savedFilters, setSavedFilters] = useState([]);
+
+  useEffect(() => {
+    fetchSavedFilters();
+  }, []);
+
+  const fetchSavedFilters = async () => {
+    try {
+      const res = await api.get('/analytics/filters');
+      setSavedFilters(res.data);
+    } catch (err) {
+      console.error("Failed to fetch filters", err);
+    }
+  };
+
+  const handleDeleteFilter = async (id) => {
+    if (!window.confirm("Delete this saved filter?")) return;
+    try {
+      await api.delete(`/analytics/filters/${id}`);
+      fetchSavedFilters();
+    } catch (err) {
+      alert("Failed to delete filter");
+    }
+  };
 
   const [formData, setFormData] = useState({
     current_password: '',
@@ -139,7 +167,7 @@ const SettingsPage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
+    <div className="max-w-4xl mx-auto py-8 px-4 space-y-8 pb-20">
       <div className="flex items-center gap-4 mb-2">
         <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
           <SettingsIcon size={24} />
@@ -196,7 +224,38 @@ const SettingsPage = () => {
         </form>
       </section>
 
-      {/* Section 2: Tax Configuration */}
+      {/* Section 2: Saved Filters */}
+      <section className="bg-surface rounded-3xl p-8 shadow-sm">
+        <div className="flex items-center gap-3 mb-6">
+          <Filter className="text-primary" size={20} />
+          <h2 className="text-xl font-bold text-white">Saved Analytics Filters</h2>
+        </div>
+
+        {savedFilters.length > 0 ? (
+          <div className="space-y-3">
+            {savedFilters.map(filter => (
+              <div key={filter.filter_id} className="flex items-center justify-between p-4 bg-background rounded-2xl border border-white/5 hover:bg-white/5 transition">
+                <div>
+                  <h3 className="font-bold text-white">{filter.name}</h3>
+                  <p className="text-xs text-secondary">Created: {new Date(filter.created_at).toLocaleDateString()}</p>
+                </div>
+                <button 
+                  onClick={() => handleDeleteFilter(filter.filter_id)}
+                  className="p-2 text-secondary hover:text-error transition"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-secondary italic bg-background/50 rounded-2xl border border-dashed border-white/10">
+            No saved filters yet. Create one in the Analytics Dashboard.
+          </div>
+        )}
+      </section>
+
+      {/* Section 3: Tax Configuration */}
       <section className="bg-surface rounded-3xl p-8 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <Percent className="text-primary" size={20} />
@@ -283,7 +342,7 @@ const SettingsPage = () => {
         </div>
       </section>
 
-      {/* Section 3: Security */}
+      {/* Section 4: Security */}
       <section className="bg-surface rounded-3xl p-8 shadow-sm">
         <div className="flex items-center gap-3 mb-8">
           <Lock className="text-primary" size={20} />
