@@ -45,6 +45,16 @@ async def list_payments(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    # Security check: If project_id provided, ensure current_user is a participant
+    if project_id:
+        participant = db.query(models.ProjectParticipant).filter(
+            models.ProjectParticipant.project_id == project_id,
+            models.ProjectParticipant.user_id == current_user.user_id
+        ).first()
+        
+        if not participant and not current_user.administrator:
+            raise HTTPException(status_code=403, detail="Not authorized to view payments for this project")
+
     return payment_repo.get_payments_for_user(db, user_id=current_user.user_id, project_id=project_id)
 
 @router.delete("/{payment_id}")

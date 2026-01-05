@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Settings, Users, Plus, Scan, 
-  Receipt, ArrowRightLeft, PieChart, Trash2, UserPlus, X, Loader2, LogOut, Search, Check
+  Receipt, ArrowRightLeft, PieChart, Trash2, UserPlus, X, Loader2, LogOut, Search, Check, DollarSign, Calendar, User, FileText, Banknote
 } from 'lucide-react';
 import useProjectStore from '../store/projectStore';
 import useAuthStore from '../store/authStore';
@@ -17,12 +17,23 @@ const ProjectDetailsPage = () => {
   const [activeTab, setActiveTab] = useState('purchases');
   const [purchases, setPurchases] = useState([]);
   const [moneyFlow, setMoneyFlow] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [stats, setStats] = useState(null);
   const [loadingData, setLoadingData] = useState(true);
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [selectedUserToAdd, setSelectedUserToAdd] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  const [newPayment, setNewPayment] = useState({
+    payer_user_id: currentUser?.user_id || '',
+    receiver_user_id: '',
+    amount: '',
+    payment_date: new Date().toISOString().split('T')[0],
+    note: ''
+  });
 
   useEffect(() => {
     if (projectId) {
@@ -42,13 +53,31 @@ const ProjectDetailsPage = () => {
   const fetchData = async () => {
     setLoadingData(true);
     try {
-      const [purchasesRes, moneyFlowRes, statsRes] = await Promise.all([
+      const [purchasesRes, moneyFlowRes, paymentsRes, statsRes] = await Promise.all([
         api.get('/purchases', { params: { project_id: projectId, search: searchTerm } }),
         api.get(`/projects/${projectId}/moneyflow`),
+        api.get('/payments', { params: { project_id: projectId } }),
         api.get(`/projects/${projectId}/stats`)
       ]);
       setPurchases(purchasesRes.data);
       setMoneyFlow(moneyFlowRes.data);
+      
+      // Map user names for payments
+      const userMap = {};
+      if (currentProject && currentProject.participants) {
+        currentProject.participants.forEach(p => {
+          userMap[p.user_id] = p.user_name;
+        });
+      }
+
+      const enhancedPayments = paymentsRes.data.map(p => ({
+        ...p,
+        payer_name: userMap[p.payer_user_id] || 'Unknown',
+        receiver_name: userMap[p.receiver_user_id] || 'Unknown',
+        creator_name: userMap[p.creator_user_id] || 'System'
+      }));
+
+      setPayments(enhancedPayments);
       setStats(statsRes.data);
     } catch (err) {
       console.error("Failed to fetch project data", err);
@@ -97,6 +126,50 @@ const ProjectDetailsPage = () => {
         } catch (err) {
             alert("Failed to leave project");
         }
+    }
+  };
+
+  const handleCreatePayment = async (e) => {
+    e.preventDefault();
+    setActionLoading(true);
+
+    if (newPayment.payer_user_id === newPayment.receiver_user_id) {
+        alert("Sender and Receiver cannot be the same person.");
+        setActionLoading(false);
+        return;
+    }
+
+    try {
+      await api.post('/payments', {
+        ...newPayment,
+        project_id: parseInt(projectId),
+        payer_user_id: parseInt(newPayment.payer_user_id),
+        receiver_user_id: parseInt(newPayment.receiver_user_id),
+        amount: parseFloat(newPayment.amount)
+      });
+      setShowPaymentModal(false);
+      setNewPayment({
+        payer_user_id: currentUser?.user_id || '',
+        receiver_user_id: '',
+        amount: '',
+        payment_date: new Date().toISOString().split('T')[0],
+        note: ''
+      });
+      fetchData();
+    } catch (err) {
+      alert("Failed to create payment: " + (err.response?.data?.detail || err.message));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeletePayment = async (id) => {
+    if (!window.confirm("Delete this payment?")) return;
+    try {
+      await api.delete(`/payments/${id}`);
+      fetchData();
+    } catch (err) {
+      alert("Failed to delete payment");
     }
   };
 
@@ -248,16 +321,27 @@ const ProjectDetailsPage = () => {
 
         {activeTab === 'moneyflow' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex justify-between items-center px-2">
+              <h2 className="text-xl font-bold text-white">Net Balances</h2>
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="bg-primary text-white px-4 py-2 rounded-full font-bold hover:opacity-90 transition flex items-center gap-2 shadow-lg text-sm"
+              >
+                <Plus size={16} />
+                Record Payment
+              </button>
+            </div>
+
             {loadingData ? <Loader2 className="animate-spin mx-auto text-primary" /> : moneyFlow.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {moneyFlow.map((flow, idx) => (
-                  <div key={idx} className="bg-surface p-6 rounded-3xl border border-white/5 flex items-center justify-between">
+                  <div key={idx} className="bg-surface p-6 rounded-3xl border border-white/5 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-3">
                       <span className="font-bold text-white">{flow.user_a_name}</span>
-                      <span className="text-xs text-secondary uppercase">Owes</span>
+                      <span className="text-xs text-secondary uppercase tracking-wider">Owes</span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-2xl font-black text-primary">€{flow.amount.toFixed(2)}</span>
+                      <span className="text-2xl font-black text-error">€{flow.amount.toFixed(2)}</span>
                       <span className="text-xs text-secondary">to {flow.user_b_name}</span>
                     </div>
                   </div>
@@ -268,6 +352,62 @@ const ProjectDetailsPage = () => {
                 Everything is settled up!
               </div>
             )}
+
+            {/* Payment History inside Project */}
+            <div className="space-y-4 pt-4">
+              <h2 className="text-xl font-bold text-white px-2">Payment Tracker</h2>
+              <div className="space-y-3">
+                {payments.length > 0 ? payments.map((p) => (
+                  <div key={p.payment_id} className="bg-surface p-4 rounded-2xl border border-white/5 shadow-sm flex items-center gap-4 group">
+                    <div className={`p-3 rounded-full ${p.payer_user_id === currentUser.user_id ? 'bg-primary/20 text-primary' : 'bg-success/20 text-success'}`}>
+                      <Banknote size={24} />
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="font-bold text-white truncate">
+                          {p.payer_user_id === currentUser.user_id ? `${currentUser.name} (You)` : p.payer_name} 
+                          <span className="text-secondary font-normal mx-1">paid</span>
+                          {p.receiver_user_id === currentUser.user_id ? `${currentUser.name} (You)` : p.receiver_name}
+                        </p>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <span className="font-black text-success whitespace-nowrap">€{p.amount.toFixed(2)}</span>
+                          <div className="w-8 flex justify-center">
+                            {(p.payer_user_id === currentUser.user_id || p.receiver_user_id === currentUser.user_id || currentUser.administrator) ? (
+                              <button 
+                                onClick={() => handleDeletePayment(p.payment_id)}
+                                className="p-2 text-secondary hover:text-error transition"
+                                title="Delete payment record"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            ) : (
+                              <div className="w-8" /> 
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+                        <span className="text-xs text-secondary flex items-center gap-1">
+                          <Calendar size={12} /> {p.payment_date}
+                        </span>
+                        <span className="text-xs text-primary/60 flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-full font-medium">
+                          <User size={10} /> Created by: {p.creator_user_id === currentUser.user_id ? `${currentUser.name} (You)` : p.creator_name || 'System'}
+                        </span>
+                        {p.note && (
+                          <span className="text-xs text-secondary flex items-center gap-1">
+                            <FileText size={12} /> {p.note}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="bg-surface p-12 rounded-3xl border border-dashed border-white/10 text-center">
+                    <p className="text-secondary italic text-sm">No payments recorded yet for this project.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -376,6 +516,112 @@ const ProjectDetailsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-surface w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in duration-200 border border-white/5">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <DollarSign size={20} className="text-primary" />
+                Record a Payment
+              </h2>
+              <button onClick={() => setShowPaymentModal(false)} className="text-secondary hover:text-white transition"><X /></button>
+            </div>
+            <form onSubmit={handleCreatePayment} className="p-8 space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-white mb-2">From (Sender)</label>
+                  <select
+                    required
+                    className="w-full p-3 bg-background rounded-xl outline-none focus:ring-2 focus:ring-primary text-white"
+                    value={newPayment.payer_user_id}
+                    onChange={(e) => {
+                        const newPayerId = parseInt(e.target.value);
+                        setNewPayment(prev => ({
+                            ...prev, 
+                            payer_user_id: newPayerId,
+                            // If sender is not You, Receiver MUST be You for safety, 
+                            // but in project context we can allow any pair
+                            receiver_user_id: prev.receiver_user_id == newPayerId ? '' : prev.receiver_user_id
+                        }));
+                    }}
+                  >
+                    <option value="">Select Sender</option>
+                    {currentProject.participants.map(p => (
+                      <option key={p.user_id} value={p.user_id}>
+                        {p.user_id === currentUser.user_id ? `${p.user_name} (You)` : p.user_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-white mb-2">To (Receiver)</label>
+                  <select
+                    required
+                    className="w-full p-3 bg-background rounded-xl outline-none focus:ring-2 focus:ring-primary text-white"
+                    value={newPayment.receiver_user_id}
+                    onChange={(e) => setNewPayment({...newPayment, receiver_user_id: parseInt(e.target.value)})}
+                  >
+                    <option value="">Select Receiver</option>
+                    {currentProject.participants
+                      .filter(p => p.user_id !== parseInt(newPayment.payer_user_id))
+                      .map(p => (
+                        <option key={p.user_id} value={p.user_id}>
+                          {p.user_id === currentUser.user_id ? `${p.user_name} (You)` : p.user_name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-white mb-2">Amount</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-bold">€</span>
+                    <input
+                      required
+                      type="number"
+                      step="0.01"
+                      className="w-full pl-8 pr-3 py-3 bg-background rounded-xl outline-none focus:ring-2 focus:ring-primary text-white"
+                      placeholder="0.00"
+                      value={newPayment.amount}
+                      onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-white mb-2">Date</label>
+                  <input
+                    required
+                    type="date"
+                    className="w-full p-3 bg-background rounded-xl outline-none focus:ring-2 focus:ring-primary text-white"
+                    value={newPayment.payment_date}
+                    onChange={(e) => setNewPayment({...newPayment, payment_date: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-white mb-2">Note (Optional)</label>
+                  <textarea
+                    className="w-full p-3 bg-background rounded-xl outline-none focus:ring-2 focus:ring-primary text-white"
+                    placeholder="What's this for?"
+                    rows="2"
+                    value={newPayment.note}
+                    onChange={(e) => setNewPayment({...newPayment, note: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              <button
+                type="submit"
+                disabled={actionLoading}
+                className="w-full py-4 bg-primary text-white font-bold rounded-2xl hover:opacity-90 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {actionLoading ? <Loader2 className="animate-spin" size={20} /> : <Check size={20} />}
+                Confirm Payment
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

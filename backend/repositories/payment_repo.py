@@ -29,12 +29,15 @@ def get_payment_by_id(db: Session, payment_id: int):
     return db.query(models.Payment).filter(models.Payment.payment_id == payment_id).first()
 
 def get_payments_for_user(db: Session, user_id: int, project_id: int = None):
-    query = db.query(models.Payment).filter(
-        (models.Payment.payer_user_id == user_id) |
-        (models.Payment.receiver_user_id == user_id)
-    )
     if project_id:
-        query = query.filter(models.Payment.project_id == project_id)
+        # For projects, return ALL payments to all participants
+        query = db.query(models.Payment).filter(models.Payment.project_id == project_id)
+    else:
+        # Global view: only payments where user is involved
+        query = db.query(models.Payment).filter(
+            (models.Payment.payer_user_id == user_id) |
+            (models.Payment.receiver_user_id == user_id)
+        )
         
     return query.order_by(models.Payment.payment_date.desc()).all()
 
