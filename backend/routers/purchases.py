@@ -5,7 +5,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from sqlalchemy.orm import Session
@@ -297,7 +297,7 @@ async def get_analytics(
     cat1: Optional[str] = None,
     cat2: Optional[str] = None,
     cat3: Optional[str] = None,
-    project_id: Optional[int] = None,
+    project_ids: Optional[List[int]] = Query(None),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -309,7 +309,7 @@ async def get_analytics(
         search=search,
         item_search=item_search,
         cat1=cat1, cat2=cat2, cat3=cat3,
-        project_id=project_id
+        project_ids=project_ids
     )
     
     # 1. Calculate Summary

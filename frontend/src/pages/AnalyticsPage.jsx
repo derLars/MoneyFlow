@@ -27,6 +27,7 @@ import {
 } from 'recharts';
 import api from '../api/axios';
 import useProjectStore from '../store/projectStore';
+import MultiSelect from '../components/ui/MultiSelect';
 
 // Theme constants
 const COLORS = {
@@ -95,7 +96,7 @@ const AnalyticsPage = () => {
     cat1: '',
     cat2: '',
     cat3: '',
-    project_id: '' // Empty string for All
+    project_ids: [] // Empty array for All
   });
 
   const getCumulativeData = (data) => {
@@ -115,9 +116,14 @@ const AnalyticsPage = () => {
     setLoading(true);
     try {
       const params = { ...filters };
-      if (params.project_id === '') delete params.project_id;
+      if (params.project_ids && params.project_ids.length === 0) delete params.project_ids;
       
-      const response = await api.get('/purchases/stats/analytics', { params });
+      const response = await api.get('/purchases/stats/analytics', { 
+        params,
+        paramsSerializer: {
+          indexes: null // this will result in ?project_ids=1&project_ids=2
+        }
+      });
       setStats(response.data);
     } catch (err) {
       console.error('Failed to fetch analytics', err);
@@ -159,17 +165,7 @@ const AnalyticsPage = () => {
 
   const loadFilter = (filter) => {
     setFilters(filter.configuration);
-    // Trigger analyze? Or let useEffect depend on filters? 
-    // Usually explicit trigger is better to avoid bouncing.
-    // But we need to update UI. 
-    // We can call handleAnalyze() after state update if we use a ref or effect.
-    // For simplicity, let's just set state and user clicks Analyze, or use effect on filters?
-    // Let's stick to manual Analyze click to be safe, or call handleAnalyze with new filters.
-    // Actually, setting state is async.
   };
-
-  // Refetch when project changes (optional, or user clicks analyze)
-  // Let's make Analyze button primary action.
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -291,17 +287,13 @@ const AnalyticsPage = () => {
 
             {/* Project Selector */}
             <div>
-              <label className="block text-[10px] uppercase tracking-wider font-bold text-secondary mb-2">Project</label>
-              <select 
-                className="w-full p-2 bg-background rounded-md text-sm outline-none text-white appearance-none cursor-pointer"
-                value={filters.project_id}
-                onChange={(e) => setFilters({ ...filters, project_id: e.target.value })}
-              >
-                <option value="">All Projects</option>
-                {projects.map(p => (
-                  <option key={p.project_id} value={p.project_id}>{p.name}</option>
-                ))}
-              </select>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-secondary mb-2">Projects</label>
+              <MultiSelect
+                options={projects.map(p => ({ value: p.project_id, label: p.name }))}
+                value={filters.project_ids}
+                onChange={(vals) => setFilters({ ...filters, project_ids: vals })}
+                placeholder="All Projects"
+              />
             </div>
 
             {/* Time Filter */}

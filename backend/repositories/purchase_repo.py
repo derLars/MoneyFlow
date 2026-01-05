@@ -154,7 +154,7 @@ def get_analytics_data(db: Session, user_id: int,
                        search: str = None,
                        item_search: str = None,
                        cat1: str = None, cat2: str = None, cat3: str = None,
-                       project_id: int = None):
+                       project_ids: list[int] = None):
     """
     Retrieves analytics data. 
     Enforcement: Only show purchases from projects where user is a participant.
@@ -169,8 +169,8 @@ def get_analytics_data(db: Session, user_id: int,
         models.ProjectParticipant.is_active == True
     )
     
-    if project_id:
-        query = query.filter(models.Purchase.project_id == project_id)
+    if project_ids:
+        query = query.filter(models.Purchase.project_id.in_(project_ids))
 
     # 2. Time Filtering
     if time_frame == "period":
