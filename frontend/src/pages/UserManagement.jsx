@@ -7,7 +7,9 @@ import {
   X, 
   AlertTriangle,
   Loader2,
-  UserPlus
+  UserPlus,
+  History,
+  Eraser
 } from 'lucide-react';
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
@@ -69,12 +71,33 @@ const UserManagement = () => {
 
     setActionLoading(true);
     try {
-      await api.delete(`/auth/users/${user.user_id}`);
-      setUsers(users.filter(u => u.user_id !== user.user_id));
+      const response = await api.delete(`/auth/users/${user.user_id}`);
+      if (response.data.status === 'anonymized') {
+        // Update user in list to show dummy state
+        setUsers(users.map(u => u.user_id === user.user_id ? response.data.user : u));
+      } else {
+        // Truly deleted
+        setUsers(users.filter(u => u.user_id !== user.user_id));
+      }
       setIsModalOpen(false);
       setIsDeleting(false);
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to delete user');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCleanup = async () => {
+    if (!window.confirm("Remove all unreferenced deleted users? This will permanently purge dummy users who are no longer linked to any purchases.")) return;
+    
+    setActionLoading(true);
+    try {
+      const response = await api.post('/auth/users/cleanup');
+      alert(`Cleanup successful. Removed ${response.data.deleted_count} users.`);
+      fetchUsers();
+    } catch (err) {
+      alert('Cleanup failed');
     } finally {
       setActionLoading(false);
     }
@@ -135,13 +158,23 @@ const UserManagement = () => {
           </div>
         </div>
 
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition active:scale-95"
-        >
-          <UserPlus size={20} />
-          Add User
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={handleCleanup}
+            disabled={actionLoading}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-surface border border-white/5 text-white rounded-xl font-bold shadow-lg hover:bg-white/5 transition active:scale-95 disabled:opacity-50"
+          >
+            {actionLoading ? <Loader2 className="animate-spin" size={20} /> : <Eraser size={20} />}
+            Cleanup
+          </button>
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition active:scale-95"
+          >
+            <UserPlus size={20} />
+            Add User
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -153,21 +186,30 @@ const UserManagement = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {users.map((user) => (
-            <div key={user.user_id} className="bg-surface rounded-3xl p-6 shadow-sm border border-white/5 hover:border-primary/20 transition group">
+            <div key={user.user_id} className={`bg-surface rounded-3xl p-6 shadow-sm border transition group ${user.is_dummy ? 'border-dashed border-white/10 opacity-75' : 'border-white/5 hover:border-primary/20'}`}>
               <div className="flex justify-between items-start mb-6">
-                <div className="w-12 h-12 bg-background rounded-full flex items-center justify-center text-white font-bold text-lg">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${user.is_dummy ? 'bg-secondary/20' : 'bg-background'}`}>
                   {user.name.substring(0, 1).toUpperCase()}
                 </div>
-                {user.administrator ? (
-                  <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1.5 border border-primary/20">
-                    <Shield size={12} />
-                    Admin
-                  </span>
-                ) : (
-                  <span className="px-3 py-1 bg-background text-secondary text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1.5 border border-white/5">
-                    User
-                  </span>
-                )}
+                <div className="flex flex-col items-end gap-2">
+                  {user.administrator && (
+                    <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1.5 border border-primary/20">
+                      <Shield size={12} />
+                      Admin
+                    </span>
+                  )}
+                  {user.is_dummy && (
+                    <span className="px-3 py-1 bg-secondary/10 text-secondary text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1.5 border border-white/10">
+                      <History size={12} />
+                      Legacy
+                    </span>
+                  )}
+                  {!user.administrator && !user.is_dummy && (
+                    <span className="px-3 py-1 bg-background text-secondary text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1.5 border border-white/5">
+                      User
+                    </span>
+                  )}
+                </div>
               </div>
               
               <h3 className="text-xl font-bold text-white mb-6 truncate">{user.name}</h3>
@@ -241,8 +283,8 @@ const UserManagement = () => {
             </div>
 
             <div className="p-8">
-              <div className="flex items-center gap-4 mb-8 p-4 bg-background rounded-2xl">
-                <div className="w-14 h-14 bg-surface rounded-full flex items-center justify-center text-xl font-bold border border-white/5 text-white">
+              <div className={`flex items-center gap-4 mb-8 p-4 bg-background rounded-2xl ${selectedUser.is_dummy ? 'opacity-75' : ''}`}>
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold border border-white/5 text-white ${selectedUser.is_dummy ? 'bg-secondary/20' : 'bg-surface'}`}>
                   {selectedUser.name.substring(0, 1).toUpperCase()}
                 </div>
                 <div>
@@ -253,64 +295,75 @@ const UserManagement = () => {
 
               {!isDeleting ? (
                 <div className="space-y-4">
-                  <button
-                    onClick={() => handleToggleAdmin(selectedUser)}
-                    disabled={actionLoading}
-                    className={`
-                      w-full p-4 rounded-2xl flex items-center gap-4 transition group border-2
-                      ${selectedUser.administrator 
-                        ? 'border-white/5 hover:border-error hover:bg-error/10' 
-                        : 'border-white/5 hover:border-primary hover:bg-primary/10'}
-                    `}
-                  >
-                    <div className={`
-                      w-10 h-10 rounded-xl flex items-center justify-center
-                      ${selectedUser.administrator ? 'bg-background text-secondary group-hover:bg-error group-hover:text-white' : 'bg-background text-secondary group-hover:bg-primary group-hover:text-white'}
-                    `}>
-                      {selectedUser.administrator ? <ShieldOff size={20} /> : <Shield size={20} />}
-                    </div>
-                    <div className="text-left">
-                      <p className="font-bold text-white">{selectedUser.administrator ? 'Revoke Admin' : 'Make Administrator'}</p>
-                      <p className="text-xs text-secondary font-medium">Change system-wide permissions</p>
-                    </div>
-                  </button>
+                  {!selectedUser.is_dummy && (
+                    <>
+                      <button
+                        onClick={() => handleToggleAdmin(selectedUser)}
+                        disabled={actionLoading}
+                        className={`
+                          w-full p-4 rounded-2xl flex items-center gap-4 transition group border-2
+                          ${selectedUser.administrator 
+                            ? 'border-white/5 hover:border-error hover:bg-error/10' 
+                            : 'border-white/5 hover:border-primary hover:bg-primary/10'}
+                        `}
+                      >
+                        <div className={`
+                          w-10 h-10 rounded-xl flex items-center justify-center
+                          ${selectedUser.administrator ? 'bg-background text-secondary group-hover:bg-error group-hover:text-white' : 'bg-background text-secondary group-hover:bg-primary group-hover:text-white'}
+                        `}>
+                          {selectedUser.administrator ? <ShieldOff size={20} /> : <Shield size={20} />}
+                        </div>
+                        <div className="text-left">
+                          <p className="font-bold text-white">{selectedUser.administrator ? 'Revoke Admin' : 'Make Administrator'}</p>
+                          <p className="text-xs text-secondary font-medium">Change system-wide permissions</p>
+                        </div>
+                      </button>
 
-                  <form onSubmit={handleOverridePassword} className="p-4 border-2 border-white/5 rounded-2xl space-y-4">
-                    <div className="text-left">
-                      <p className="font-bold text-white text-sm">Override Password</p>
-                      <p className="text-[10px] text-secondary font-medium mb-3">Set a new preliminary password</p>
-                      <div className="flex gap-2">
-                        <input
-                          type="password"
-                          required
-                          placeholder="New password..."
-                          className="flex-1 p-2 bg-background rounded-lg text-xs outline-none focus:ring-1 focus:ring-primary text-white"
-                          value={overridePassword}
-                          onChange={(e) => setOverridePassword(e.target.value)}
-                        />
-                        <button
-                          type="submit"
-                          disabled={actionLoading || !overridePassword}
-                          className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold shadow hover:opacity-90 disabled:opacity-50"
-                        >
-                          Set
-                        </button>
-                      </div>
-                    </div>
-                  </form>
+                      <form onSubmit={handleOverridePassword} className="p-4 border-2 border-white/5 rounded-2xl space-y-4">
+                        <div className="text-left">
+                          <p className="font-bold text-white text-sm">Override Password</p>
+                          <p className="text-[10px] text-secondary font-medium mb-3">Set a new preliminary password</p>
+                          <div className="flex gap-2">
+                            <input
+                              type="password"
+                              required
+                              placeholder="New password..."
+                              className="flex-1 p-2 bg-background rounded-lg text-xs outline-none focus:ring-1 focus:ring-primary text-white"
+                              value={overridePassword}
+                              onChange={(e) => setOverridePassword(e.target.value)}
+                            />
+                            <button
+                              type="submit"
+                              disabled={actionLoading || !overridePassword}
+                              className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold shadow hover:opacity-90 disabled:opacity-50"
+                            >
+                              Set
+                            </button>
+                          </div>
+                        </div>
+                      </form>
 
-                  <button
-                    onClick={() => setIsDeleting(true)}
-                    className="w-full p-4 border-2 border-transparent hover:border-error/20 hover:bg-error/10 rounded-2xl flex items-center gap-4 transition group"
-                  >
-                    <div className="w-10 h-10 bg-error/10 text-error rounded-xl flex items-center justify-center group-hover:bg-error group-hover:text-white">
-                      <Trash2 size={20} />
+                      <button
+                        onClick={() => setIsDeleting(true)}
+                        className="w-full p-4 border-2 border-transparent hover:border-error/20 hover:bg-error/10 rounded-2xl flex items-center gap-4 transition group"
+                      >
+                        <div className="w-10 h-10 bg-error/10 text-error rounded-xl flex items-center justify-center group-hover:bg-error group-hover:text-white">
+                          <Trash2 size={20} />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-bold text-white">Delete Account</p>
+                          <p className="text-xs text-secondary font-medium">Permanently remove this user</p>
+                        </div>
+                      </button>
+                    </>
+                  )}
+                  {selectedUser.is_dummy && (
+                    <div className="p-4 bg-background border-2 border-white/5 rounded-2xl">
+                      <p className="text-sm font-medium text-secondary text-center">
+                        This user is a legacy record and cannot be further modified. Use the "Cleanup" tool on the main page to remove it once all its data references are gone.
+                      </p>
                     </div>
-                    <div className="text-left">
-                      <p className="font-bold text-white">Delete Account</p>
-                      <p className="text-xs text-secondary font-medium">Permanently remove this user</p>
-                    </div>
-                  </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-200">

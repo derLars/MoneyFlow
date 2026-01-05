@@ -59,20 +59,67 @@ def update_user_tax_settings(db: Session, user_id: int, default_tax_rate: float,
         return True
     return False
 
+def _has_dependencies(db: Session, user_id: int) -> bool:
+    # Check if user has historical financial data (payer, creator, or contributor)
+    has_purchases = db.query(models.Purchase).filter(
+        (models.Purchase.creator_user_id == user_id) | 
+        (models.Purchase.payer_user_id == user_id)
+    ).first() is not None
+    
+    if has_purchases: return True
+
+    has_contributions = db.query(models.Contributor).filter(
+        models.Contributor.user_id == user_id
+    ).first() is not None
+
+    if has_contributions: return True
+
+    has_payments = db.query(models.Payment).filter(
+        (models.Payment.creator_user_id == user_id) |
+        (models.Payment.payer_user_id == user_id) |
+        (models.Payment.receiver_user_id == user_id)
+    ).first() is not None
+
+    return has_payments
+
 def delete_user(db: Session, user_id: int):
     user = get_user_by_id(db, user_id)
-    if user:
-        # Delete user's categories
-        db.query(models.Category).filter(models.Category.user_id == user_id).delete()
-        # Delete user's friendly name mappings
-        db.query(models.FriendlyName).filter(models.FriendlyName.user_id == user_id).delete()
-        # Delete user's logs
-        db.query(models.PurchaseLog).filter(models.PurchaseLog.user_id == user_id).delete()
-        # Deletions for purchases created by the user are tricky if shared.
-        # Section 9.4.1 says: "Removes a user and all their associated, non-shared data".
-        # We'll leave shared purchases alone for now to avoid orphan data.
+    if not user:
+        return None
         
+    if _has_dependencies(db, user_id):
+        # Anonymize instead of hard delete to preserve historical integrity
+        user.name = f"Deleted User {user.user_id}"
+        user.password_hash = "DELETED"
+        user.is_dummy = True
+        user.administrator = False
+        
+        # Cascades in models.py will handle:
+        # - Categories, FriendlyNames, CategoryMappings, PurchaseLogs, ProjectParticipants, SavedFilters
+        
+        db.commit()
+        db.refresh(user)
+        return user
+    else:
+        # Truly no shared data, safe to hard delete
         db.delete(user)
         db.commit()
-        return True
-    return False
+        return None
+
+def cleanup_unreferenced_dummy_users(db: Session) -> int:
+    """
+    Finds all dummy users and deletes them if they are no longer referenced in any data.
+    Returns the number of deleted users.
+    """
+    dummy_users = db.query(models.User).filter(models.User.is_dummy == True).all()
+    deleted_count = 0
+    
+    for user in dummy_users:
+        if not _has_dependencies(db, user.user_id):
+            db.delete(user)
+            deleted_count += 1
+            
+    if deleted_count > 0:
+        db.commit()
+        
+    return deleted_count

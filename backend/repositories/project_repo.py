@@ -74,10 +74,11 @@ def remove_participant(db: Session, project_id: int, user_id: int):
         db.commit()
 
 def delete_project(db: Session, project_id: int):
-    # Simplified deletion: Just delete the project. 
-    # Cascades to Purchases -> Items -> Contributors.
-    db.query(models.Project).filter(models.Project.project_id == project_id).delete()
-    db.commit()
+    # Use object-based deletion to trigger SQLAlchemy cascades
+    project = get_project_by_id(db, project_id)
+    if project:
+        db.delete(project)
+        db.commit()
 
 def get_project_stats(db: Session, project_id: int):
     # Calculate total spending

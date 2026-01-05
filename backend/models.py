@@ -17,12 +17,12 @@ class User(Base):
     created_purchases = relationship("Purchase", back_populates="creator", foreign_keys="[Purchase.creator_user_id]")
     paid_purchases = relationship("Purchase", back_populates="payer", foreign_keys="[Purchase.payer_user_id]")
     contributions = relationship("Contributor", back_populates="user")
-    categories = relationship("Category", back_populates="user")
-    friendly_names = relationship("FriendlyName", back_populates="user")
-    category_mappings = relationship("CategoryMapping", back_populates="user")
-    logs = relationship("PurchaseLog", back_populates="user")
-    projects = relationship("ProjectParticipant", back_populates="user")
-    saved_filters = relationship("SavedFilter", back_populates="user")
+    categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")
+    friendly_names = relationship("FriendlyName", back_populates="user", cascade="all, delete-orphan")
+    category_mappings = relationship("CategoryMapping", back_populates="user", cascade="all, delete-orphan")
+    logs = relationship("PurchaseLog", back_populates="user", cascade="all, delete-orphan")
+    projects = relationship("ProjectParticipant", back_populates="user", cascade="all, delete-orphan")
+    saved_filters = relationship("SavedFilter", back_populates="user", cascade="all, delete-orphan")
 
 class Project(Base):
     __tablename__ = "projects"

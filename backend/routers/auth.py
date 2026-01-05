@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import List, Dict
+from typing import List, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -13,6 +13,7 @@ class UserResponse(BaseModel):
     user_id: int
     name: str
     administrator: bool
+    is_dummy: bool = False
     default_tax_rate: float
     common_tax_rates: str
 
@@ -97,10 +98,26 @@ async def delete_user(
     if user_id == current_user.user_id:
         raise HTTPException(status_code=400, detail="Cannot delete your own admin account")
         
-    success = user_repo.delete_user(db, user_id=user_id)
-    if not success:
+    user = user_repo.get_user_by_id(db, user_id)
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"status": "success"}
+
+    result = user_repo.delete_user(db, user_id=user_id)
+    if result is None:
+        return {"status": "deleted"}
+    else:
+        return {"status": "anonymized", "user": result}
+
+@router.post("/users/cleanup")
+async def cleanup_users(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if not current_user.administrator:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    count = user_repo.cleanup_unreferenced_dummy_users(db)
+    return {"status": "success", "deleted_count": count}
 
 @router.post("/change-password")
 async def change_password(
