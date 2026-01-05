@@ -8,7 +8,7 @@ import MainPage from './pages/MainPage'
 import ScanReceiptPage from './pages/ScanReceiptPage'
 import PurchaseList from './pages/PurchaseList'
 import AnalyticsPage from './pages/AnalyticsPage'
-import UserManagement from './pages/UserManagement'
+import AdminTools from './pages/AdminTools'
 import SettingsPage from './pages/SettingsPage'
 import MoneyFlowPage from './pages/MoneyFlowPage'
 import ProjectDetailsPage from './pages/ProjectDetailsPage'
@@ -48,8 +48,8 @@ function App() {
         <Route path="edit-purchase/:id" element={<PurchaseEditor />} />
         <Route path="dashboard" element={<AnalyticsPage />} />
         <Route 
-          path="users" 
-          element={user?.administrator ? <UserManagement /> : <Navigate to="/" />} 
+          path="admin" 
+          element={user?.administrator ? <AdminTools /> : <Navigate to="/" />} 
         />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="moneyflow" element={<MoneyFlowPage />} />

@@ -25,7 +25,7 @@ const Layout = () => {
   ];
 
   if (user?.administrator) {
-    navLinks.push({ name: 'User Management', path: '/users', icon: <Users size={20} /> });
+    navLinks.push({ name: 'Admin Tools', path: '/admin', icon: <Users size={20} /> });
   }
 
   return (

@@ -186,6 +186,39 @@ async def delete_project(
     project_repo.delete_project(db, project_id)
     return {"status": "success"}
 
+@router.get("/admin/all", response_model=List[schemas.ProjectResponse])
+async def list_all_projects_admin(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if not current_user.administrator:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get ALL projects from DB
+    projects = db.query(models.Project).order_by(models.Project.created_at.desc()).all()
+    
+    result = []
+    for p in projects:
+        participants = [
+            schemas.ProjectParticipantResponse(
+                participant_id=part.participant_id,
+                user_id=part.user_id,
+                joined_at=part.joined_at,
+                user_name=part.user.name,
+                is_active=part.is_active
+            ) for part in p.participants
+        ]
+        result.append(schemas.ProjectResponse(
+            project_id=p.project_id,
+            name=p.name,
+            description=p.description,
+            image_path=p.image_path,
+            created_at=p.created_at,
+            created_by_user_id=p.created_by_user_id,
+            participants=participants
+        ))
+    return result
+
 @router.post("/{project_id}/participants")
 async def add_participant(
     project_id: int,

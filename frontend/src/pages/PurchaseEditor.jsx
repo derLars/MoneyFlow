@@ -462,7 +462,9 @@ const PurchaseEditor = () => {
         await api.post(`/purchases/${newId}/logs`, { message: `Purchase created by user ${user.user_id}` });
       }
       
-      if (purchase.project_id) {
+      if (location.state?.fromAdmin) {
+        navigate('/admin');
+      } else if (purchase.project_id) {
         navigate(`/projects/${purchase.project_id}`);
       } else {
         navigate('/');
@@ -478,7 +480,9 @@ const PurchaseEditor = () => {
     setActionLoading(true);
     try {
       await api.delete(`/purchases/${id}`);
-      if (purchase.project_id) {
+      if (location.state?.fromAdmin) {
+        navigate('/admin');
+      } else if (purchase.project_id) {
         navigate(`/projects/${purchase.project_id}`);
       } else {
         navigate('/');

@@ -637,3 +637,44 @@ async def list_purchases(
         }
         for p in purchases
     ]
+
+@router.get("/admin/all")
+async def list_all_purchases_admin(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if not current_user.administrator:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get ALL purchases from DB
+    purchases = db.query(models.Purchase).order_by(models.Purchase.purchase_date.desc()).all()
+    
+    return [
+        {
+            "purchase_id": p.purchase_id,
+            "purchase_name": p.purchase_name,
+            "purchase_date": str(p.purchase_date),
+            "payer_user_id": p.payer_user_id,
+            "payer_name": p.payer.name if p.payer else "Deleted account",
+            "creator_user_id": p.creator_user_id,
+            "tax_is_added": p.tax_is_added,
+            "discount_is_applied": p.discount_is_applied,
+            "project_id": p.project_id,
+            "items": [
+                {
+                    "item_id": item.item_id,
+                    "original_name": item.original_name,
+                    "friendly_name": item.friendly_name,
+                    "quantity": item.quantity,
+                    "price": float(item.price),
+                    "discount": float(item.discount),
+                    "tax_rate": float(item.tax_rate),
+                    "category_level_1": item.category_level_1,
+                    "category_level_2": item.category_level_2,
+                    "category_level_3": item.category_level_3
+                }
+                for item in p.items
+            ]
+        }
+        for p in purchases
+    ]
