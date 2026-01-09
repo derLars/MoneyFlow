@@ -31,10 +31,11 @@ def get_user_projects(db: Session, user_id: int):
 def get_project_by_id(db: Session, project_id: int):
     return db.query(models.Project).filter(models.Project.project_id == project_id).first()
 
-def update_project(db: Session, project_id: int, name: str, description: str, image_path: str):
+def update_project(db: Session, project_id: int, name: str = None, description: str = None, image_path: str = None):
     project = get_project_by_id(db, project_id)
     if project:
-        project.name = name
+        if name is not None:
+            project.name = name
         if description is not None:
             project.description = description
         if image_path is not None:

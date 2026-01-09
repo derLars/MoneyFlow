@@ -82,6 +82,22 @@ const useProjectStore = create((set, get) => ({
       set({ error: err.message });
       throw err;
     }
+  },
+
+  updateProject: async (projectId, projectData) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await api.put(`/projects/${projectId}`, projectData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      // Refresh current project and list
+      await get().fetchProjectDetails(projectId);
+      await get().fetchProjects();
+      return response.data;
+    } catch (err) {
+      set({ error: err.response?.data?.detail || err.message, loading: false });
+      throw err;
+    }
   }
 }));
 

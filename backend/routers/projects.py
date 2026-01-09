@@ -139,8 +139,8 @@ async def get_project(
 @router.put("/{project_id}")
 async def update_project(
     project_id: int,
-    name: str = Form(None),
-    description: str = Form(None),
+    name: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -159,14 +159,36 @@ async def update_project(
         from storage import get_storage
         store = get_storage()
         try:
-            file_name = f"project_img_{project_id}_{file.filename}"
+            # Generate a unique filename to avoid browser caching issues or name collisions
+            import uuid
+            unique_id = uuid.uuid4().hex[:8]
+            file_name = f"project_img_{project_id}_{unique_id}_{file.filename}"
             store.upload_fileobj(file.file, file_name)
             image_path = file_name
         except Exception as e:
             print(f"DEBUG: Image upload failed: {e}")
 
-    updated = project_repo.update_project(db, project_id, name or project.name, description, image_path)
-    return {"status": "success", "image_path": updated.image_path}
+    updated = project_repo.update_project(
+        db, 
+        project_id, 
+        name=name if name is not None else project.name, 
+        description=description if description is not None else project.description, 
+        image_path=image_path
+    )
+    
+    from storage import get_storage
+    storage = get_storage()
+    image_url = storage.get_file_url(updated.image_path) if updated.image_path else None
+
+    return {
+        "status": "success", 
+        "project": {
+            "project_id": updated.project_id,
+            "name": updated.name,
+            "description": updated.description,
+            "image_path": image_url or updated.image_path
+        }
+    }
 
 @router.delete("/{project_id}")
 async def delete_project(

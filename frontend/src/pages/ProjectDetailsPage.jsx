@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Settings, Users, Plus, Scan, 
-  Receipt, ArrowRightLeft, PieChart, Trash2, UserPlus, X, Loader2, LogOut, Search, Check, DollarSign, Calendar, User, FileText, Banknote
+  Receipt, ArrowRightLeft, PieChart, Trash2, UserPlus, X, Loader2, LogOut, Search, Check, DollarSign, Calendar, User, FileText, Banknote, Edit2, Upload, Save
 } from 'lucide-react';
 import useProjectStore from '../store/projectStore';
 import useAuthStore from '../store/authStore';
@@ -11,7 +11,7 @@ import api from '../api/axios';
 const ProjectDetailsPage = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const { currentProject, fetchProjectDetails, deleteProject, addParticipant, removeParticipant, loading } = useProjectStore();
+  const { currentProject, fetchProjectDetails, deleteProject, addParticipant, removeParticipant, updateProject, loading } = useProjectStore();
   const { user: currentUser } = useAuthStore();
   
   const [activeTab, setActiveTab] = useState('purchases');
@@ -27,6 +27,13 @@ const ProjectDetailsPage = () => {
   const [selectedUserToAdd, setSelectedUserToAdd] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Editing state
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editFile, setEditFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+
   const [newPayment, setNewPayment] = useState({
     payer_user_id: currentUser?.user_id || '',
     receiver_user_id: '',
@@ -37,10 +44,23 @@ const ProjectDetailsPage = () => {
 
   useEffect(() => {
     if (projectId) {
-      fetchProjectDetails(projectId);
+      fetchProjectDetails(projectId).then(project => {
+          if (project) {
+              setEditName(project.name);
+              setEditDescription(project.description || '');
+          }
+      });
       fetchData();
     }
   }, [projectId]);
+
+  // Sync edit state when project changes (e.g. after update)
+  useEffect(() => {
+    if (currentProject && !editMode) {
+      setEditName(currentProject.name);
+      setEditDescription(currentProject.description || '');
+    }
+  }, [currentProject, editMode]);
 
   // Debounce search
   useEffect(() => {
@@ -126,6 +146,35 @@ const ProjectDetailsPage = () => {
         } catch (err) {
             alert("Failed to leave project");
         }
+    }
+  };
+
+  const handleUpdateProject = async (e) => {
+    e.preventDefault();
+    setActionLoading(true);
+    try {
+        const formData = new FormData();
+        formData.append('name', editName);
+        formData.append('description', editDescription);
+        if (editFile) {
+            formData.append('file', editFile);
+        }
+        await updateProject(projectId, formData);
+        setEditMode(false);
+        setEditFile(null);
+        setPreviewUrl(null);
+    } catch (err) {
+        alert("Failed to update project: " + err.message);
+    } finally {
+        setActionLoading(false);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        setEditFile(file);
+        setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
@@ -440,6 +489,122 @@ const ProjectDetailsPage = () => {
 
         {activeTab === 'settings' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            {/* Project Settings */}
+            <div className="bg-surface rounded-3xl border border-white/5 overflow-hidden">
+              <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                <h3 className="font-bold text-white flex items-center gap-2"><Settings size={20} /> Project Information</h3>
+                {!editMode && (
+                  <button 
+                    onClick={() => setEditMode(true)}
+                    className="text-primary hover:text-white text-sm font-bold flex items-center gap-1 transition"
+                  >
+                    <Edit2 size={16} /> Edit Details
+                  </button>
+                )}
+              </div>
+              <div className="p-6">
+                {editMode ? (
+                  <form onSubmit={handleUpdateProject} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-bold text-white mb-2">Project Name</label>
+                          <input 
+                            type="text"
+                            value={editName}
+                            onChange={e => setEditName(e.target.value)}
+                            className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-1 focus:ring-primary"
+                            placeholder="Project Name"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-white mb-2">Description</label>
+                          <textarea 
+                            value={editDescription}
+                            onChange={e => setEditDescription(e.target.value)}
+                            className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-1 focus:ring-primary min-h-[100px]"
+                            placeholder="What is this project about?"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <label className="block text-sm font-bold text-white mb-2">Project Image</label>
+                        <div className="relative group aspect-video rounded-2xl overflow-hidden bg-background border border-dashed border-white/20 flex items-center justify-center">
+                          {previewUrl || currentProject.image_path ? (
+                            <>
+                              <img 
+                                src={previewUrl || (currentProject.image_path?.startsWith('http') || currentProject.image_path?.startsWith('/') ? currentProject.image_path : `/api/purchases/images/${currentProject.image_path}`)} 
+                                className="w-full h-full object-cover" 
+                                alt="Preview" 
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                <label className="cursor-pointer bg-white/20 hover:bg-white/30 backdrop-blur-md text-white p-3 rounded-full transition">
+                                  <Upload size={24} />
+                                  <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
+                                </label>
+                              </div>
+                            </>
+                          ) : (
+                            <label className="cursor-pointer flex flex-col items-center gap-2 text-secondary hover:text-white transition">
+                              <Upload size={32} />
+                              <span className="font-bold">Upload Image</span>
+                              <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setEditMode(false);
+                          setEditName(currentProject.name);
+                          setEditDescription(currentProject.description || '');
+                          setEditFile(null);
+                          setPreviewUrl(null);
+                        }}
+                        className="px-6 py-2 bg-white/5 text-secondary font-bold rounded-xl hover:bg-white/10 transition"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit"
+                        disabled={actionLoading}
+                        className="px-6 py-2 bg-primary text-white font-bold rounded-xl hover:opacity-90 transition disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                        Save Changes
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="flex flex-col md:flex-row gap-6">
+                    <div className="flex-1 space-y-4">
+                      <div>
+                        <h4 className="text-xs font-bold text-secondary uppercase tracking-wider mb-1">Project Name</h4>
+                        <p className="text-lg font-bold text-white">{currentProject.name}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-secondary uppercase tracking-wider mb-1">Description</h4>
+                        <p className="text-white/80">{currentProject.description || <span className="italic opacity-50">No description provided.</span>}</p>
+                      </div>
+                    </div>
+                    {currentProject.image_path && (
+                      <div className="w-full md:w-64 aspect-video rounded-2xl overflow-hidden border border-white/5">
+                        <img 
+                          src={currentProject.image_path.startsWith('http') || currentProject.image_path.startsWith('/') ? currentProject.image_path : `/api/purchases/images/${currentProject.image_path}`} 
+                          className="w-full h-full object-cover" 
+                          alt={currentProject.name}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="bg-surface rounded-3xl border border-white/5 overflow-hidden">
               <div className="p-6 border-b border-white/5 flex justify-between items-center">
                 <h3 className="font-bold text-white flex items-center gap-2"><Users size={20} /> Participants</h3>
