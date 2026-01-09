@@ -2,40 +2,44 @@
 
 **Moneyflow** is a powerful, self-hosted web application designed to simplify receipt digitization, expense management, and collaborative cost-sharing. Using AI-driven analysis, Moneyflow transforms your paper receipts into structured, actionable financial data.
 
+> [!IMPORTANT]
+> **This application was purely developed using Agentic Coding.** Every line of code, from the backend architecture to the frontend interface, was generated and refined through autonomous AI software engineering.
+
 ---
 
 ## ✨ Key Features
 
-*   **Smart Receipt Digitization**: Upload images and let AI extract items, prices, and quantities automatically.
-*   **Collaborative Tracking**: Easily split costs among multiple contributors and track who paid for what.
-*   **Deep Analytics**: Visualize your spending habits with interactive dashboards, scatter plots, and Sankey diagrams for category flows.
-*   **Privacy-First & Self-Hosted**: Designed for private deployment (LXC/Docker), ensuring your financial data stays under your control.
+*   **Project-Based Organization**: Group expenses into distinct projects (e.g., "Summer Trip 2025" or "Shared House") for perfect isolation.
+*   **AI Receipt Scanning**: Multi-image upload with advanced Vision AI (Mistral/Pixtral) to automatically extract items, prices, and quantities.
+*   **Collaborative Tracking**: Real-time group management. Add participants and split costs equally across specific items.
+*   **Optimized Settlement**: Built-in greedy algorithm calculates the most efficient "money flow" to settle debts with the fewest possible transactions.
+*   **Intelligent Mapping**: Learnable friendly-name mapping that translates cryptic receipt text into readable product names.
+*   **Deep Analytics**: Visualize spending habits with interactive dashboards, scatter plots, and multi-level Sankey diagrams.
+*   **Privacy-First & Self-Hosted**: Designed for private deployment (LXC/Docker) on Proxmox or standard Linux environments.
 
 ---
 
 ## 🛠️ Dependencies
 
 *   **Docker & Docker Compose**: For containerized deployment.
-*   **Mistral AI API Key**: For advanced receipt analysis and item extraction.
+*   **Mistral AI API Key**: Required for the Vision LLM receipt analysis.
 
 ---
 
 ## 🚀 Installation
 
-### Option 1: Proxmox LXC (Recommended for PVE users)
-The easiest way to get Moneyflow running on Proxmox. This automated script creates a dedicated Debian-based LXC container and sets up everything for you.
+### Option 1: Proxmox LXC (Recommended)
+The easiest way to get Moneyflow running on Proxmox. This automated script creates a dedicated Debian-based LXC container and sets up the entire stack.
 
 Run this command on your Proxmox host:
 ```bash
 bash -c "$(wget -qLO - https://github.com/derlars/MoneyFlow/raw/main/moneyflow.sh)"
 ```
 
-### Option 2: Docker Compose (Generic Linux/Any OS)
-If you prefer running Moneyflow as a standard Docker stack:
-
+### Option 2: Docker Compose (Generic Linux)
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/derlars/MoneyFlow.git
+    git clone https://github.com/derLars/MoneyFlow.git
     cd MoneyFlow
     ```
 2.  **Configure Environment**:
@@ -44,35 +48,38 @@ If you prefer running Moneyflow as a standard Docker stack:
     SECRET_KEY=your_random_secret_hex
     MISTRAL_API_KEY=your_mistral_key
     ```
-    *(Note: `SECRET_KEY` is required for secure authentication. You can generate one using `openssl rand -hex 32`)*.
-
 3.  **Launch**:
     ```bash
     docker compose up -d --build
     ```
-4.  **Create Admin User**:
+4.  **Initial Setup & Password Reset**:
+    To securely create or reset the admin user:
     ```bash
-    docker exec -it moneyflow-backend python3 create_admin_user.py --username admin --password yourpassword
+    docker exec -it moneyflow-backend python3 create_admin_user.py
     ```
 
 ---
 
 ## 🖥️ Usage
 
-Once installed, access the web interface at:
-`http://<your-server-ip>`
+Access the interface at: `http://<your-server-ip>`
 
-*   **Default Admin**: `admin` / (password you set during installation)
-*   **Network Ports**: The application is served on port **80** (mapped to 8080 inside the container for compatibility with unprivileged environments). The backend API runs on port **8002**.
+*   **Default Admin**: `admin`
+*   **Administrative APIs**: Administrators have access to **Admin Tools** for global management of all users, projects, and purchases.
+*   **Database Migrations**: If upgrading, run:
+    ```bash
+    docker exec -it moneyflow-backend python3 migrate_v2.py
+    docker exec -it moneyflow-backend python3 migrate_v3.py
+    ```
 
 ---
 
-## 👨‍💻 Development
+## 👨‍💻 Tech Stack
 
-Contributions are welcome!
-- **Backend**: FastAPI (Python 3.10)
-- **Frontend**: React (Vite + Tailwind CSS)
-- **Database**: PostgreSQL (Production) / SQLite (Dev)
+- **Backend**: FastAPI (Python 3.10) with SQLAlchemy (PostgreSQL/SQLite)
+- **Frontend**: React (Vite) + Tailwind CSS + Zustand
+- **AI**: Mistral AI SDK (Pixtral Vision model)
+- **Deployment**: Docker / Proxmox LXC
 
 ---
 
@@ -81,4 +88,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-*Made with ❤️ for better expense tracking.*
+*Developed autonomously with ❤️ via Agentic Coding.*
