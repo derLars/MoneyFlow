@@ -41,13 +41,13 @@ const MainPage = () => {
 
       {/* KPI Section - Personal Spending */}
       <section className="flex justify-center">
-        <div className="bg-surface p-8 rounded-3xl shadow-sm border border-white/5 flex items-center gap-6 min-w-[300px] w-full sm:w-auto">
-          <div className="p-4 bg-primary/10 text-primary rounded-2xl">
-            <TrendingUp size={32} />
+        <div className="bg-surface p-4 md:p-6 rounded-xl md:rounded-2xl shadow-sm border border-white/5 flex items-center gap-4 w-full">
+          <div className="p-2.5 md:p-3 bg-primary/10 text-primary rounded-xl">
+            <TrendingUp size={22} />
           </div>
           <div>
-            <p className="text-sm font-bold text-secondary uppercase tracking-wider">{currentMonthName} SPENDING</p>
-            <p className="text-4xl font-bold text-white mt-1">
+            <p className="text-[10px] md:text-xs font-bold text-secondary uppercase tracking-wider">{currentMonthName} SPENDING</p>
+            <p className="text-2xl md:text-3xl font-bold text-white mt-0.5">
               {loadingSummary ? "..." : `€${summary?.month_total?.toFixed(2) || "0.00"}`}
             </p>
           </div>
@@ -78,58 +78,46 @@ const MainPage = () => {
             ))}
           </div>
         ) : projects.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
             {projects.map((project) => (
               <Link
                 key={project.project_id}
                 to={`/projects/${project.project_id}`}
-                className="bg-surface p-5 rounded-3xl border border-white/5 shadow-sm hover:bg-white/5 active:scale-[0.98] transition group flex flex-col justify-between min-h-[140px]"
+                className="bg-surface p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 shadow-sm hover:bg-white/5 active:scale-[0.98] transition group flex items-center gap-3"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl overflow-hidden bg-background flex-shrink-0 flex items-center justify-center border border-white/10">
-                      {project.image_path ? (
-                        <img 
-                          src={project.image_path.startsWith('http') || project.image_path.startsWith('/') ? project.image_path : `/api/purchases/images/${project.image_path}`} 
-                          alt={project.name} 
-                          className="w-full h-full object-cover"
-                          onError={(e) => { e.target.onerror = null; e.target.src = '' }} // Fallback
-                        />
-                      ) : (
-                        <Folder className="text-secondary" size={24} />
+                <div className="w-10 h-10 rounded-xl overflow-hidden bg-background flex-shrink-0 flex items-center justify-center border border-white/10">
+                  {project.image_path ? (
+                    <img 
+                      src={project.image_path.startsWith('http') || project.image_path.startsWith('/') ? project.image_path : `/api/purchases/images/${project.image_path}`} 
+                      alt={project.name} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.target.onerror = null; e.target.src = '' }}
+                    />
+                  ) : (
+                    <Folder className="text-secondary" size={18} />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-sm md:text-base text-white group-hover:text-primary transition truncate">
+                    {project.name}
+                  </h3>
+                  <div className="flex items-center gap-2 text-[10px] md:text-xs text-secondary mt-0.5">
+                    <div className="flex -space-x-1 overflow-hidden">
+                      {project.participants.slice(0, 3).map((p) => (
+                        <div key={p.user_id} className="inline-block h-4 w-4 rounded-full ring-1 ring-surface bg-background flex items-center justify-center text-[7px] font-bold text-secondary" title={p.user_name}>
+                          {p.user_name.charAt(0).toUpperCase()}
+                        </div>
+                      ))}
+                      {project.participants.length > 3 && (
+                        <div className="inline-block h-4 w-4 rounded-full ring-1 ring-surface bg-background flex items-center justify-center text-[7px] font-bold text-secondary">
+                          +{project.participants.length - 3}
+                        </div>
                       )}
                     </div>
-                    <div>
-                      <h3 className="font-bold text-white text-lg group-hover:text-primary transition line-clamp-1">
-                        {project.name}
-                      </h3>
-                      {project.description && (
-                        <p className="text-xs text-secondary line-clamp-1">{project.description}</p>
-                      )}
-                    </div>
-                  </div>
-                  <ChevronRight size={20} className="text-secondary group-hover:text-primary transition" />
-                </div>
-                
-                <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/5">
-                  <div className="flex -space-x-2 overflow-hidden">
-                    {/* Participant Avatars (Simulated) */}
-                    {project.participants.slice(0, 3).map((p) => (
-                      <div key={p.user_id} className="inline-block h-8 w-8 rounded-full ring-2 ring-surface bg-background flex items-center justify-center text-xs font-bold text-secondary" title={p.user_name}>
-                        {p.user_name.charAt(0).toUpperCase()}
-                      </div>
-                    ))}
-                    {project.participants.length > 3 && (
-                      <div className="inline-block h-8 w-8 rounded-full ring-2 ring-surface bg-background flex items-center justify-center text-xs font-bold text-secondary">
-                        +{project.participants.length - 3}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-xs text-secondary flex items-center gap-1 ml-auto">
-                    <Clock size={12} />
-                    {new Date(project.created_at).toLocaleDateString()}
+                    {project.description && <span className="truncate">• {project.description}</span>}
                   </div>
                 </div>
+                <ChevronRight size={16} className="text-secondary/40 group-hover:text-primary transition flex-shrink-0" />
               </Link>
             ))}
           </div>

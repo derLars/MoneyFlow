@@ -37,28 +37,28 @@ const PurchaseList = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 py-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold text-white">Purchase Archive</h1>
+    <div className="max-w-6xl mx-auto space-y-4 md:space-y-6 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <h1 className="text-xl md:text-2xl font-bold text-white">Purchase Archive</h1>
         
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary" size={18} />
-            <input
-              type="text"
-              placeholder="Search by title..."
-              className="pl-10 pr-4 py-3 md:py-2 bg-surface border border-white/5 rounded-xl outline-none focus:ring-2 focus:ring-primary w-full sm:w-64 text-white placeholder:text-secondary"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+              <input
+                type="text"
+                placeholder="Search by title..."
+                className="pl-9 pr-3 py-2 bg-surface border border-white/5 rounded-lg outline-none focus:ring-2 focus:ring-primary w-full sm:w-56 text-white placeholder:text-secondary text-sm"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
           </div>
 
           {/* Sort dropdown */}
           <div className="relative">
-            <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary" size={18} />
+            <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 text-secondary" size={14} />
             <select
-              className="pl-10 pr-8 py-3 md:py-2 bg-surface border border-white/5 rounded-xl outline-none focus:ring-2 focus:ring-primary appearance-none text-white"
+              className="pl-8 pr-6 py-2 bg-surface border border-white/5 rounded-lg outline-none focus:ring-2 focus:ring-primary appearance-none text-white text-sm"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
             >
@@ -72,69 +72,57 @@ const PurchaseList = () => {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {[1, 2, 3, 4, 5, 6].map(i => (
-            <div key={i} className="h-48 bg-surface rounded-3xl animate-pulse border border-white/5 shadow-sm"></div>
+            <div key={i} className="h-16 md:h-20 bg-surface rounded-xl animate-pulse border border-white/5"></div>
           ))}
         </div>
       ) : purchases.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {purchases.map((p) => (
             <Link
               key={p.purchase_id}
               to={`/edit-purchase/${p.purchase_id}`}
-              className="bg-surface rounded-3xl shadow-sm border border-white/5 hover:border-primary/40 hover:shadow-md transition flex flex-col overflow-hidden group"
+              className="bg-surface rounded-xl md:rounded-2xl shadow-sm border border-white/5 hover:border-primary/40 hover:shadow-md transition flex group"
             >
-              <div className="p-6 flex-grow">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 bg-background rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition">
-                    <Receipt size={24} />
+              <div className="p-3 md:p-4 flex-1 flex items-center gap-3">
+                <div className="w-10 h-10 bg-background rounded-xl flex items-center justify-center text-primary flex-shrink-0">
+                  <Receipt size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-sm text-white truncate group-hover:text-primary transition">
+                        {p.purchase_name}
+                      </h3>
+                      <div className="flex items-center gap-2 text-[10px] text-secondary mt-0.5">
+                        <span className="flex items-center gap-0.5">
+                          <Calendar size={10} />
+                          {new Date(p.purchase_date).toLocaleDateString()}
+                        </span>
+                        <span>•</span>
+                        <span>{p.items?.length || 0} items</span>
+                        {p.images?.length > 0 && <Paperclip size={10} className="text-tertiary" />}
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-base font-bold text-white">€{calculateTotal(p)}</div>
+                      <div className="text-[9px] text-secondary">Paid by {p.payer_name || 'Deleted'}</div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                  <div className="text-2xl font-bold text-white flex items-center justify-end">
-                    {calculateTotal(p)}
-                  </div>
-                    <p className="text-[10px] uppercase tracking-wider text-secondary font-bold">Total</p>
-                  </div>
                 </div>
-
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-bold text-lg text-white line-clamp-1 group-hover:text-primary transition">
-                    {p.purchase_name}
-                  </h3>
-                  {p.images && p.images.length > 0 && (
-                    <Paperclip size={16} className="text-secondary" title="Receipt images attached" />
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3 text-xs text-secondary">
-                  <span className="flex items-center gap-1">
-                    <Calendar size={12} />
-                    {new Date(p.purchase_date).toLocaleDateString()}
-                  </span>
-                  <span className="font-medium text-tertiary">
-                    {p.items?.length || 0} items
-                  </span>
-                </div>
-              </div>
-
-              <div className="px-6 py-4 bg-white/5 border-t border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-medium text-secondary">
-                  <User size={14} className="text-secondary" />
-                  <span>Paid by <span className="text-white font-bold">{p.payer_name || 'Deleted account'}</span></span>
-                </div>
-                <ChevronRight size={16} className="text-secondary group-hover:text-primary transition" />
+                <ChevronRight size={14} className="text-secondary/30 flex-shrink-0" />
               </div>
             </Link>
           ))}
         </div>
       ) : (
-        <div className="text-center py-20 bg-surface rounded-3xl border border-dashed border-white/10 shadow-inner">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-background text-secondary rounded-full mb-6">
-            <Search size={40} />
+        <div className="text-center py-12 bg-surface rounded-xl border border-dashed border-white/10">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-background text-secondary rounded-full mb-3">
+            <Search size={22} />
           </div>
-          <p className="text-white text-lg font-medium">No purchases found matching your search.</p>
-          <p className="text-sm text-secondary mt-2">Try adjusting your filters or search term.</p>
+          <p className="text-white text-sm font-medium">No purchases found.</p>
+          <p className="text-xs text-secondary mt-1">Try adjusting your search or filters.</p>
         </div>
       )}
     </div>
