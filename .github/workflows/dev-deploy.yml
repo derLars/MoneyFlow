@@ -1,0 +1,31 @@
+name: Deploy to MoneyFlow Dev Server
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get short commit SHA
+        id: vars
+        run: echo "sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.MONEYFLOW_SERVER_HOST }}
+          username: root
+          key: ${{ secrets.MONEYFLOW_SSH_KEY }}
+          port: 22
+          script: |
+            cd /root/MoneyFlow
+            git pull origin main
+            docker compose -f docker-compose.dev.yml down
+            docker compose -f docker-compose.dev.yml up -d --build
+            docker image prune -f
