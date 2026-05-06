@@ -1,1224 +1,1102 @@
-# Purchase Organizer Application
+# MoneyFlow
 ## Comprehensive Project Specification
 
-Comprehensive Project Specification
-
+---
 
 ## 1. High-Level Objective
 
-To create a full-stack, containerized web application that allows users to digitize, manage,
-and analyze purchase receipts for personal and collaborative expense tracking. The
-application must be deployable in a private, self-hosted environment via LXC containers.
+MoneyFlow is a full-stack, containerized web application for digitizing, managing, and
+analyzing purchase receipts within the context of **Projects** (e.g., trips, events, shared
+living). It enables personal and collaborative expense tracking, allowing users to scan
+receipts via Vision AI, map cryptic product names to "friendly names," assign shared costs
+among project participants, and automatically calculate optimized debt settlements. The
+application is deployable in a private, self-hosted environment via Docker or LXC containers.
 
+---
 
 ## 2. Core Concepts & Terminology
 
-●​ Purchase: A single transaction record, which contains metadata (name, date,
-creator) and a list of associated items.
-●​ Item: An individual product or service within a purchase, having the properties:
-extracted name, friendly name, price, quantity, categories, and payers.
-●​ User: Any registered user, using the application.
-●​ Creator: The user who originally created a specific purchase.
-●​ Payer: The user that made the initial payment for a purchase.
-●​ Contributor: Any user assigned to pay an equal part of the item’s cost.
-●​ Friendly Name: A user-friendly, standardized name for a product (e.g., "Milk")
-mapped from a more cryptic name found on a receipt (e.g., "FRSHMLK 1.5%").
-●​ Extracted Name: The name of an item that was extracted from the receipt (e.g.,
-"FRSHMLK 1.5%").
+* **Project**: A top-level grouping entity that contains purchases, payments, and
+  participants. All expenses and money flow are scoped to a specific project.
+* **Purchase**: A single transaction record, which contains metadata (name, date, creator,
+  payer) and a list of associated items.
+* **Item**: An individual product or service within a purchase, having the properties:
+  original name, friendly name, price, quantity, discount, tax rate, categories, and
+  contributors.
+* **User**: Any registered user of the application.
+* **Creator**: The user who originally created a specific purchase or project.
+* **Payer**: The user that made the initial payment for a purchase.
+* **Contributor**: Any user assigned to pay an equal part of an item's cost.
+* **Project Participant**: A user who is an active member of a project, with full management
+  rights over that project's data.
+* **Friendly Name**: A user-friendly, standardized name for a product (e.g., "Milk") mapped
+  from a more cryptic name found on a receipt (e.g., "FRSHMLK 1.5%").
+* **Extracted Name**: The name of an item as extracted from the receipt by Vision AI.
+* **Payment**: A direct money transfer recorded between two users, optionally within a
+  project, to settle debts.
+* **Money Flow**: The algorithmic calculation of the most efficient settlement plan (minimum
+  transactions) between project participants.
+* **Category Mapping**: A learned association between a friendly name and a 3-level
+  category hierarchy, enabling auto-categorization on future purchases.
+* **Saved Filter**: A named analytics filter configuration (time frame, categories, project)
+  persisted per user.
 
+---
 
 ## 3. Environment
 
-The application is deployable on a Linux server. This is a self-hosted environment that is
-exposed to the internet. Only configured users have access.
-The website is accessible from a common browser either from a stationary computer or from
-a mobile device.
+The application is deployable on a Linux server via Docker Compose (production) or LXC
+containers on Proxmox. This is a self-hosted environment that can be exposed to the
+internet. Only configured users have access. The website is accessible from any common
+browser, on desktop or mobile devices.
 
+---
 
 ## 4. User Roles
 
+### 4.1 User
 
-## 4.1 User
+A standard account. Can:
+* Create and manage projects, becoming an active participant with full rights over them.
+* Create purchases within their active projects (manual entry or receipt scan).
+* View, edit, and delete purchases within projects they actively participate in.
+* Record direct payments to settle debts with other project participants.
+* View analytics filtered to their active projects only.
+* Manage their profile (username, password, tax settings, saved filters).
 
-A standard account. Can create their own purchases, view/edit/delete purchases they are a
-contributor on.
-
-
-## 4.2 Administrator
+### 4.2 Administrator
 
 A privileged account. Has all the capabilities of a standard User, plus:
+* Full read/write access to ALL users, projects, purchases, and data in the system.
+* Access to an admin tools page for user management, project oversight, and purchase
+  supervision.
+* Ability to add, manage, and delete users (with password override).
+* Ability to toggle administrator rights on any user.
+* Ability to view and delete any project or purchase.
 
-●​ Full read/write access to ALL users, purchases, and data in the system.
-●​ Access to a user management page.
-●​ Ability to add, manage and delete users.
-
+---
 
 ## 5. Pages
 
+### 5.1 Login Page
 
-## 5.1 Login Page
+The primary objective is to provide a clean, secure gateway to the application. The design
+is minimal to focus attention on the single task of logging in.
 
-The primary objective of this page is to provide a clean, secure, and user-friendly gateway to
-the application. The design will be minimal to focus the user's attention on the single task of
-logging in.
+#### 5.1.1 Visual Layout & Design
 
+The application uses a dark theme throughout.
 
-### 5.1.1 Visual Layout & Design (Desktop View)
+* **Background**: Dark (#0B0E14).
+* **Login Card**: Centered card on surface color (#151921) with rounded corners
+  (`rounded-3xl`, 24px). Maximum width of 400px on desktop.
+* **Header**: The application logo at the top; a heading "Log in to your account".
+* **Form Fields**:
+  * Username Input: Text field with floating label "Username".
+  * Password Input: Password field with floating label "Password" and a visibility
+    toggle icon.
+* **Action Button**: "Log In" button in primary blue (#3B82F6), full width, white bold text.
+* **Typography**: Poppins font family, weights 400/500/600/700.
 
-The desktop view will use a modern, centered, card-based layout to create a sense of focus
-and professionalism.
-●​ Background: A subtle, light-gray background (#F8F9FA) to provide a neutral
-canvas.
-●​ Login Card: A central card with a soft shadow and rounded corners will contain all
-the interactive elements. This card will have a maximum width (e.g., 400px) to
-maintain a tight, organized look on wider screens.
-●​ Header:
-○​ Inside the card, at the top, the application's logo will be displayed.
-○​ Below the logo, a clear heading <h1> will state "Log in to your account".
-●​ Form Fields: The form is the core of the page.
-○​ User name Input: A text field clearly labeled "User name".
-○​ Password Input: A password field labeled "Password". A key feature will be
-an icon on the right side of the field to toggle password visibility, improving
-user experience by helping prevent typos.
-●​ Action Button:
-○​ The "Log In" button will be the primary call-to-action. It will use the​
-Primary (Deep Blue) color, span the full width of the card, and have bold,
-white text to make it highly prominent.
+#### 5.1.2 Responsiveness (Mobile View)
 
+* The card expands to full screen width with minimal horizontal padding.
+* Font sizes adjusted for optimal legibility on smaller screens.
+* Buttons and inputs meet mobile accessibility tap target guidelines.
 
-### 5.1.2 Responsiveness (Mobile View)
+---
 
-The design will be fully responsive and optimized for mobile use.
-●​ Layout: The card-based layout is maintained, but the card will expand to use the full
-width of the screen, with minimal horizontal padding.
-●​ Font Sizes: Font sizes will be adjusted to ensure optimal legibility on smaller
-screens.
-●​ Tap Targets: Buttons and input fields will adhere to mobile accessibility guidelines,
-ensuring they are large enough to be easily tapped.
+### 5.2 Main Page (Home)
 
-5.4 Main Page
-The Main Page serves as the primary launchpad for all user activities. Its objective is to
-provide immediate access to the most common actions, offer a quick overview of recent
-activity, and establish the application's primary navigation structure. It embodies the "Clarity
-in Focus" philosophy by presenting information in a clean, organized, and actionable
-manner.
+The Main Page serves as the primary launchpad after login. It provides a quick overview of
+the user's active projects, monthly spending summary, and global search.
 
+#### 5.2.1 Visual Layout & Design
 
-### 5.4.1 Visual Layout & Design
+* **Persistent Header**: Sticky top bar with:
+  * Centered "Moneyflow" logo/title (links to home).
+  * Hamburger menu icon (left on mobile, top-right on desktop) opening a sidebar
+    overlay with navigation links: Home, Purchases, Analytics, Money Flow, Settings.
+    Administrators additionally see "Admin Tools".
+  * User avatar (initial letter) on the right.
+* **Global Search**: A prominent search bar at the top that performs full-text search across
+  projects, purchases, and items. Results display with type-coded icons (folder for
+  projects, shopping bag for purchases, package for items). Clicking navigates to the
+  relevant detail page.
+* **Monthly KPI Card**: Shows the current month's personal spending summary.
+* **Projects Grid**: Cards for each active project displaying:
+  * Project image (with placeholder if none).
+  * Project name and description.
+  * Participant avatar chips (max 3 shown + overflow count).
+  * Creation date.
+  * Empty state with CTA to create the first project.
+* **Create Project Modal**: Triggered by "New Project" button. Form with image upload,
+  project name, description, and multi-select participant picker.
 
-The layout is clean and structured, with a clear visual hierarchy to guide the user. It
-introduces the application's persistent navigation header.
-●​ Persistent Navigation Bar (Header): A slim header will be present at the top of this
-page and all other authenticated pages.
-○​ Left Side: The application logo and a welcoming message, such as
-"Welcome, [User's Friendly Name]!".
-○​ Right Side: An icon-driven menu. This includes:
-■​ A "Logout" button.
-■​ A navigation menu icon (e.g., a "hamburger" icon) that, when clicked,
-opens a drop-down menu with links to “Home”, "Purchases",
-"Dashboard" and "Settings".
-●​ Primary Action Hub: The main content area will lead with a prominent section
-dedicated to the application's core function: adding a purchase.
-○​ This section will feature a large, centric "Scan Receipt" button and a “Create
-Purchase” button, styled with the Primary (Deep Blue) color to draw the
-user's attention.
-○​ Interaction: Clicking this button will open a simple modal dialog with two
-clear choices:
-■​ "Scan Receipt" button.
-■​ "Create Purchase" button.
-○​ This approach keeps the main page clean while providing direct access to
-both purchase creation methods.
-●​ Recent Activity Feed: Below the action hub, a section titled "Recent Purchases"
-will provide an at-a-glance summary.
-○​ This will display the 3-5 most recent purchases in a vertical list of cards.
-○​ Each Purchase Card will be clickable and display essential information:
-■​ Purchase Name (purchase_name).
-■​ Purchase Date (purchase_date).
-■​ Total amount of the purchase.
-○​ At the bottom of the list, a "View All Purchases" link will navigate the user to
-the full "Purchase Review Screen."
+#### 5.2.2 Responsiveness (Mobile View)
 
+* Content organized into a single, scrollable column.
+* Project cards expand to full width.
+* Global search optimized for smaller viewport.
 
-### 5.4.2 Responsiveness (Mobile View)
+---
 
-The design will be fully responsive to ensure a seamless mobile experience.
-●​ Navigation Bar: The welcome message may be hidden to save space. The
-navigation links will be accessible exclusively through the hamburger menu icon to
-keep the header clean.
+### 5.3 Scan Receipt Page
 
-●​ Layout: The content will be organized into a single, scrollable column. The "Primary
-Action Hub" will remain at the top, followed by the "Recent Activity" feed.
-●​ Cards: Purchase cards will expand to the full width of the screen (with appropriate
-padding) to maximize readability and ensure tap targets are large enough.
+The objective is to provide a simple, step-by-step process for users to upload, prepare,
+and submit their receipt images for automated data extraction via Vision AI.
 
+#### 5.3.1 Visual Layout & Design
 
-## 5.5 Scan Receipt Page
+* **Header**: "Scan Your Receipt" heading.
+* **Step 1 — Upload Area**: A large drag-and-drop zone with instructional text:
+  "Drag & drop receipt images here, or click to browse". Accepts JPEG and PNG, up to
+  5 images.
+* **Step 2 — Image Staging & Preparation**: Once uploaded, images appear as thumbnails
+  in a responsive grid. Each thumbnail features:
+  * An 'X' icon to remove the image.
+  * A "Crop & Rotate" button that opens an image editor modal (powered by
+    `react-cropper`) with rotation slider (0-360 degrees, quick -90/+90 buttons) and
+    zoom control.
+* **Scan Button**: Below the grid, a primary "Scan Receipt" button (disabled until at
+  least one image is present). On click, images are sent to the backend for Vision AI
+  processing. On success, the user is redirected to the Purchase Editor pre-filled with
+  extracted data.
 
-The objective of this page is to provide a simple, step-by-step process for users to upload,
-prepare, and submit their receipt images for automated data extraction.
+---
 
+### 5.4 Purchase Editor Page (Item Review & Editing)
 
-### 5.5.1 Visual Layout & Design
+This page serves as the central hub for managing the details of a single purchase. It has
+two primary modes:
+1. **Review Mode**: Entered after a receipt scan, pre-filled with AI-extracted data for
+   verification and correction.
+2. **Creation Mode**: Entered via "Create Manually", a blank canvas for building a purchase
+   from scratch.
 
-The page will maintain the Persistent Navigation Bar for consistency. The layout will guide
-the user through a clear, linear process from top to bottom.
-●​ Header: A prominent <h1> heading at the top will clearly label the page: "Scan Your
-Receipt".
-●​ Step 1: Upload Area: The first section will be a large, clearly defined drop zone for
-images.
-○​ Instructional Text: It will feature text like "Drag & drop receipt images here,
-or click to browse". It will also specify the accepted formats and limits: "You
-can upload up to 5 images (JPEG, PNG, HEIC)".
-○​ Button: A large "Upload Images" button will be centered within this area for
-users who prefer clicking to Browse files.
-●​ Step 2: Image Staging & Preparation: Once images are uploaded, they will appear
-in this section, which is initially hidden.
-○​ Header: A subheading <h2> will label this section "Prepare Your Images".
-○​ Image Grid: The uploaded images will be displayed as thumbnails in a
-responsive grid . Each thumbnail will feature:
-■​ An 'X' icon to remove the image.
-■​ Icons for​
-Rotate and Crop, which will open a simple editing tool in a modal
-window when clicked.
-○​ Action Bar: Below the image grid, a final action bar will appear. It will contain
-a single, primary action button labeled "Scan Receipt". This button will be
-disabled until at least one image has been uploaded.
+#### 5.4.1 Visual Layout & Design
 
+The page uses a structured, three-section layout with a sticky bottom footer.
 
-## 5.6 Item Review & Editing Page
+**Section 1: Purchase Metadata Card**
+* Purchase Name: Text input for the purchase title.
+* Purchase Date: Date picker, defaulting to the current date.
+* Payer: Single-select dropdown of project participants. Defaults to the creator.
+* Project: The project this purchase belongs to (auto-set when created from a project).
+* Global Contributors: Multi-select dropdown with an "Apply to all items" button for bulk
+  assignment.
+* Tax/Discount Toggle Switches: Enable or disable tax rate and discount fields on all items.
+* Receipt Images: If created from a scan, small clickable image previews.
+* Summary: Real-time total price and per-contributor breakdown, calculated client-side.
 
-This page serves as the central hub for managing the details of a single purchase. It has two
-primary states:
-1)​ Review Mode: Entered after a receipt scan, the page is pre-filled with extracted data
-for the user to verify, correct, and finalize.
-2)​ Creation Mode: Entered via the "Create Manually" workflow, the page is a blank
-canvas for the user to build a purchase record from scratch.
+**Section 2: Interactive Item List (Card View with Drag-and-Drop)**
+* **List Controls**: "Add Item at Top" button plus inline "+" buttons between items on hover.
+* **The Item Card** (powered by `@dnd-kit` for reordering):
+  * **Drag Handle**: Six-dot grip icon on the left for reordering via mouse or touch.
+  * **Top Row**: Editable friendly name input. Original extracted name shown below as
+    non-editable text.
+  * **Middle Rows**: Quantity, Price, Discount (if enabled), Tax Rate (if enabled).
+  * **Category Row**: Three dependent `CreatableSelect` dropdowns (Category 1 → 2 → 3).
+    Each allows selecting an existing category or typing a new one. Category 2 is only
+    active if Category 1 is set; Category 3 only if Category 2 is set. Clearing a parent
+    auto-clears children.
+  * **Contributors Row**: Multi-select dropdown of project participants.
+  * **Delete Action**: Trash icon in the top-right corner.
+* **Visual Feedback**: Dragging a card lifts it with a subtle shadow for smooth repositioning.
 
-This is a detailed view for managing a single purchase. It displays all purchase details,
-including any receipt images, and a table of all its items. On this page, users can edit, add,
-or delete items. It also shows a summary of the total cost and the cost per contributor.
+**Section 3: Sticky Actions Footer**
+* **Confirm Purchase**: Primary blue button to save all changes.
+* **Delete Purchase**: Destructive red button (opens confirmation modal).
+* **View Logs**: Secondary button that opens a modal with the purchase's audit log.
+* Safe-area bottom padding for mobile browsers.
 
+---
 
-### 5.6.1 Visual Layout & Design
+### 5.5 Purchase List Page (Archive)
 
-The page will use the Persistent Navigation Bar and a structured, three-section layout to
-keep the dense information organized and easy to manage.
-Section 1: Purchase Details Header
-○​ This top section contains the metadata for the entire purchase.
-○​ Purchase Name: An input field for the purchase's title (e.g., "Weekly
-Groceries").
-○​ Purchase Date: A date picker, defaulting to the current date.
-○​ Payer: A single-select dropdown menu with assignable users. The creator of
-the purchase is by default selected.
-○​ Receipt Images: If created from a scan, small, clickable image previews are
-displayed here. Clicking an image opens it in a full-size modal view.
-○​ Global Options: Checkboxes for "Add Tax" and "Apply discounts" are
-present here, unticked by default.
-○​ Summary View: For already saved purchases, a summary section displays
-the "total price for the purchase" and the "total price for the purchase per
-contributor".
-Section 2: Interactive Item List (Card View)
-This section is now a dynamic vertical list of item cards instead of a table.
-●​ List Controls: Above the item list, a small control bar will be present:
-○​ Add Item button: Creates a new, blank item card and adds it to the top of the
-list.
-●​ The Item Card: Each item is represented by a distinct card with a clear structure.
-○​ Drag Handle: On the far left of each card, a "drag handle" icon (e.g., six small
-dots) will visually indicate that the card can be moved.
-○​ Card Layout: The content within the card is organized for clarity:
-■​ Top Row: The Friendly Name is displayed prominently as an editable
-text input. The Original Name (if from a scan) is shown below it as
-non-editable text.
-■​ First Middle Row: A three-column layout for Quantity, Price, and
-Categories, all as editable inputs.
-■​ Second Middle Row: Three editable dropdown menus. One for each
-category (Category1, Category2, Category3). Category3 is only
-activated if Category2 was set. Category2 is only activated if
-Category1 was set. Each dropdown menu allows making a new entry
-or selecting one of the already created (and saved in the database)
-entries. If Category1 was set, then Category2 was set, then Category1
-was emptied, then Category2 is also automatically emptied to avoid
-that Category2 is set without having a Category1.
+A centralized, searchable, and sortable archive of all purchases across the user's active
+projects.
 
-■​ Bottom Row: The Contributors multi-select dropdown, allowing for the
-assignment of users as contributors.
-■​ Delete Action: A "Delete" (trash can) icon is placed on the top-right
-corner of the card to remove that specific item.
-○​ Visual Feedback: When a user clicks and drags a card, it will lift with a subtle
-shadow and can be smoothly re-positioned within the list.
-○​ User Interaction for Item card List:
-1.​ Re-ordering: The user can click and hold the drag handle on any card
-and move it up or down in the list to change its order.
-2.​ Editing: The user can click directly on any field (e.g., Price, Friendly
-Name) within a card to edit its value.
-3.​ Adding: Clicking the "Add Item" button in the List Controls instantly
-adds a new card to the list, ready to be filled out.
-Section 3: Actions Footer
-○​ This final section provides an overview and contains the primary page
-actions.
-○​ Action Buttons: A button group is aligned to the right.
-■​ Confirm Purchase: The primary action button (solid Deep Blue) to
-save all changes.
-■​ Delete Purchase: A destructive action button (solid Alert Red), visible
-to users with deletion rights. Clicking it will open a confirmation
-pop-up.
-■​ View Logs: A subtle, secondary button that opens a pop-up with the
-purchase's logs.
+#### 5.5.1 Visual Layout & Design
 
+* **Filtering Controls**: Search bar (by purchase title, debounced 300ms) and sort dropdown
+  (Newest, Oldest, Highest Price, Lowest Price).
+* **Purchase Card Grid**: 3-column responsive grid. Each card shows:
+  * Receipt icon.
+  * Total cost (calculated from items, large bold display).
+  * Purchase title.
+  * Paperclip indicator for attached images.
+  * Date and item count.
+  * Payer name.
+  * Clicking navigates to the Purchase Editor for that purchase.
+* **Empty State**: Helpful message with link to scan or create a purchase.
 
-## 5.7 Purchase Review Page
+#### 5.5.2 Responsiveness (Mobile View)
 
-The objective of this page is to provide a centralized, searchable, and easy-to-browse
-archive of all past purchases. It functions like a digital filing cabinet, allowing users to quickly
-find a specific purchase and navigate to its detailed view. The design prioritizes efficient
-searching and clear information presentation.
+* Card grid collapses to a single vertical column.
+* Filter and sort controls optimized for smaller viewports.
 
+---
 
-### 5.7.1 Visual Layout & Design
+### 5.6 Project Details Page
 
-The page will use the Persistent Navigation Bar for consistency. The main content area is
-structured into a control section and a dynamic content grid.
-●​ Section 1: Filtering and Controls
-○​ A clean control bar is situated at the top of the page, below the main header.
-○​ Search Filter: A prominent search bar will be the central element, as
-specified. It will have placeholder text like "Search by purchase title..." to
-guide the user. The search will filter the list to show only purchases with a title
-containing the search string.
-○​ Sorting Controls: To enhance usability, a "Sort by" dropdown will be included
-next to the search bar. While the default sort is always newest-to-oldest, this
-will give users additional options like "Date: Oldest to Newest" or "Total: High
-to Low".
+The central hub for an individual project. Provides four tabs for managing all aspects of a
+collaborative expense group.
 
-●​ Section 2: Purchase List (Card Grid)
-○​ The main area of the page displays all filtered purchases in a responsive card
-grid.
-○​ The Purchase Card: Each card acts as a high-level summary and a gateway
-to the detailed view. The entire card is a single clickable element. Each card
-will contain:
-■​ Purchase Name: The name of the purchase, displayed as the card's
-title.
-■​ Purchase Date: Displayed clearly below the title.
-■​ Total Cost: A large, bold display of the purchase's final total amount.
-■​ Payer username: The username of the user that is assigned as
-payer.
-■​ Contributor Avatars: A small section showing the user avatars (or
-initials) of the contributors involved, giving a quick visual cue of who
-shared the cost.
-■​ Receipt Icon: A small icon (e.g., a paperclip) to indicate if the
-purchase has one or more receipt images attached.
-○​ Empty State: If the user has no purchases, or if a search yields no results,
-the grid area will display a clean, helpful message instead of a blank space.
-For example: "No purchases found. Ready to scan your first receipt?" with a
-link to the "Scan Receipt" page.
+#### 5.6.1 Visual Layout & Design
 
+* **Hero Header**: Project image with gradient overlay, project name, description.
+  Back navigation link and "Leave Project" button.
+* **Tab Navigation**: Pill-style segmented control with four tabs:
 
-### 5.7.2 Responsiveness (Mobile View)
+**Purchases Tab**
+* Quick-action buttons: "Scan Receipt" and "Add Manually".
+* Search bar for filtering purchases within the project.
+* Purchase card list with totals and links to the Purchase Editor.
 
-●​ The card grid will seamlessly collapse into a single, vertical column.
-●​ Each purchase card will expand to the full width of the screen (with padding), making
-the list easy to scroll and tap on a mobile device.
-●​ The filter and sort controls will remain at the top, optimized for a smaller viewport.
+**Money Flow Tab**
+* Net balances grid: Shows who owes whom within the project.
+* "Record Payment" button: Opens a modal to record a direct payment (sender, receiver,
+  amount, date, note).
+* Payment Tracker: History of all payments within the project with delete capability.
 
+**Statistics Tab**
+* Total project spending display.
+* Per-user spending breakdown.
 
-## 5.8 Dashboard & Analytics Page
+**Settings Tab**
+* Edit project name, description, and image (inline form).
+* Participants list: Add/remove participants.
+* Delete project button (opens confirmation modal).
 
-The objective of this page is to transform raw purchase data into meaningful insights. It
-empowers users to explore their spending habits through a powerful, interactive filtering
-system and clear data visualizations, as detailed in the specification.
+---
 
+### 5.7 Analytics Page
 
-### 5.8.1 Visual Layout & Design
+Transforms raw purchase data into meaningful insights through interactive filtering and
+data visualizations.
 
-The page will use the Persistent Navigation Bar and a two-column layout on desktop to
-separate controls from content, providing a classic and effective dashboard experience.
-●​ Left Column: The Filter Menu
-○​ A dedicated sidebar that houses all available filters, allowing users to refine
-the data they see.
-○​ Time Filter (Mandatory): At the top, a segmented button group will allow the
-user to select the time frame: Day, Month, Year, or All Time. A date-picker will
-appear below, corresponding to the selected time frame. This filter is set to
-"Year" with the current year selected by default.
-○​ Search String Filter: A search input for filtering by Purchase Title.
+#### 5.7.1 Visual Layout & Design
 
-○​ Category Filters: A stack of three dependent dropdown menus for Category
-1, Category 2, and Category 3. The categories are independently selectable.
-Which means that the user could select a Category 2 without selecting a
-Category 1.
-○​ Purchase Item Filter: A dropdown menu allowing the user to select a specific
-item they have purchased before.
-●​ Right Column: Data Visualization
-○​ This main area displays the data that corresponds to the active filters.
-○​ Summary View (KPI Cards): A row of "Key Performance Indicator" cards at
-the top provides a high-level summary. This will prominently show key figures,
-such as:
-■​ Total Spending: The primary metric showing how much the user paid
-within the filtered selection.
-■​ Number of Purchases: The total count of purchases matching the
-filters.
-■​ Average Purchase Cost: The total spending divided by the number of
+* **Split Layout**: Collapsible filter sidebar (overlay on mobile, persistent on desktop) +
+  main chart area.
+
+**Filter Sidebar**
+* **Project Filter**: Multi-select for scoping to specific projects.
+* **Time Frame**: Segmented control (Period / Month / Year / All Time) with corresponding
+  date picker. Defaults to current year.
+* **Search Filters**: Text inputs for purchase title and item name.
+* **Category Filters**: Three independent text inputs for Category 1, 2, and 3 (can select
+  any level without parent).
+* **Scope Toggle**: "My Share" (personal spending) vs "Total" (group spending).
+* **Save/Load Filters**: Persist and recall named filter configurations per user.
+
+**Main Chart Area**
+* **KPI Cards**: Total Spending, Personal Spending, Number of Purchases, Average Cost.
+* **View Type Selector**: Dropdown to choose visualization:
+  * **Cumulative** (AreaChart): Running total of spending over time with gradient fill.
+  * **Individual** (ScatterChart): Each purchase as a point; X = time, Y = cost.
+    Hover reveals name, date, and exact cost.
+  * **Flow** (Sankey diagram): Total amount flows through Category 1 → Category 2 →
+    Category 3 → Items, showing spending distribution.
+
+#### 5.7.2 Responsiveness (Mobile View)
+
+* Two-column layout adapts to single column.
+* Filter sidebar collapses behind a "Show Filters" button, sliding in as an overlay.
+* Charts allow horizontal scrolling or pinch-to-zoom.
+
+---
+
+### 5.8 Money Flow Page
+
+A global (cross-project) view of debts and payments between users.
+
+#### 5.8.1 Visual Layout & Design
+
+* **Net Balances Section**: Shows optimized settlement balances from the greedy
+  money-flow algorithm, indicating who owes whom and how much.
+* **Payment Tracker Section**: History of all direct payments. For payments where the
+  current user is involved, a delete option is available.
+
+---
+
+### 5.9 Settings Page
+
+Centralized location for managing profile information, security settings, and preferences.
+
+#### 5.9.1 Visual Layout & Design
+
+* **Account Section**: Display and update username. Changing username triggers re-login.
+* **Tax Configuration Section**: Set default tax rate and manage common tax rates
+  (add/remove pill-shaped tags).
+* **Saved Filters Section**: List of saved analytics filters with delete capability.
+* **Security Section**: Change Password form with three fields:
+  * Current Password
+  * New Password
+  * Confirm New Password
+  * Password visibility toggles on all fields.
+  * Validation: 10-30 characters. Button disabled until all fields are filled and new
+    passwords match.
+
+#### 5.9.2 Responsiveness (Mobile View)
+
+* Single column layout. Each settings section is a full-width card stacked vertically.
+
+---
+
+### 5.10 Admin Tools Page
+
+Exclusively for administrators. Provides system-wide management of users, projects, and
 purchases.
-○​ Graphical visualization: dropdown menu allows selecting one of the two
-following visualizations of the filtered spendings:
-■​ Scatter Plot: Below the summary cards, a large, interactive scatter
-plot visualizes the spending over time.
-●​ X-Axis: Time
-●​ Y-Axis: Cost
-●​ Each point on the plot represents a single purchase. Hovering
-over a point will reveal a tooltip with the purchase name, date,
-and exact cost.
-■​ Sankey diagram: A full view of the flow of the filtered spendings
-where it starts on the left with the total amount and then going to the
-right a fine-graining of Category 1, Category 2, Category 3 and the
-items.
 
+#### 5.10.1 Visual Layout & Design
 
-### 5.8.2 Responsiveness (Mobile View)
+* **3-Tab Interface**: Users, Projects, Purchases.
 
-●​ The two-column layout will adapt to a single-column view.
-●​ The Filter Menu will be collapsed by default and accessible via a "Show Filters"
-button at the top of the page. Tapping this button will slide the filter menu in as an
-overlay.
-●​ The summary cards and the scatter plot/sankey diagram (whatever is selected to be
-visible) will stack vertically, with the chart allowing for horizontal scrolling or
-pinch-to-zoom to explore the data.
+**Users Tab**
+* Grid of user cards with Admin/Legacy badges.
+* "Manage User" modal for each user:
+  * Toggle administrator rights.
+  * Override password.
+  * Delete (or anonymize) user.
+* "Add User" modal: Create new user with username and password.
+* "Cleanup" button: Remove unreferenced deleted/dummy users.
 
+**Projects Tab**
+* Grid of all projects with View (navigate to project) and Delete buttons.
 
-## 5.9 Settings Page
+**Purchases Tab**
+* List of all purchases with Edit (navigates to Purchase Editor in admin mode) and
+  Delete buttons.
+* Client-side search across current tab's dataset.
 
-The objective of this page is to provide a centralized and clear location for users to manage
-their profile information, security settings. The design will use distinct sections to group
-related settings, making the page easy to navigate and understand.
-
-
-### 5.9.1 Visual Layout & Design
-
-
-The page will use the Persistent Navigation Bar. The main content area will be organized
-into separate cards for each category of settings, creating a clean and modular layout.
-●​ Section 1: Account Information
-○​ A card at the top will display static, important user identifiers.
-○​ User name: User name: A non-editable field will clearly display the user's
-unique User name.
-●​ Section 3: Security
-○​ A card focused on password management.
-○​ Header: <h2> heading: "Change Password".
-○​ Form: Three input fields will be provided:
-■​ Current Password
-■​ New Password
-■​ Confirm New Password
-○​ Action Button: A "Change Password" button will be at the bottom of the
-card. The button will be disabled until all fields are filled and the new
-passwords match and meet the length requirements (10-30 characters).
-
-
-### 5.9.2 Responsiveness (Mobile View)
-
-●​ The layout will collapse into a single column.
-●​ Each settings section (Account Information, Profile, Security, etc.) will be presented
-as a full-width card, stacked vertically, making it easy to scroll through and manage
-on a mobile device.
-
-
-## 5.10 User Management Page
-
-This page is exclusively for administrators.The objective of this page is to provide
-administrators with a secure, clear, and efficient interface to manage all user accounts in the
-system. Given the powerful capabilities of this page, the design prioritizes clarity, deliberate
-actions, and confirmation steps to prevent accidental changes. This page is only visible to
-and accessible by users with the "Administrator" role.
-
-
-### 5.10.1 Visual Layout & Design
-
-The page will use the Persistent Navigation Bar. The layout will be structured to allow for
-both a high-level overview and detailed management of individual users.
-●​ Section 1: Page Header and Global Actions
-○​ A prominent <h1> heading will state: "User Management".
-○​ Add User Button: A primary "+ Add User" button will be present. Clicking
-this will open a modal window for creating a new account.
-●​ Section 2: User Grid (Card View)
-●​ The main area of the page will display all users in a responsive card grid.
-●​ The User Card: Each card is a self-contained unit representing a single user.
-It will clearly display:
-○​ User's Name: Displayed prominently as the card's title.
-○​ Role Tag: A distinct visual tag (e.g., a colored pill-shaped badge)
-indicating the user's role ("Administrator" or "User").
-
-○​ Manage Button: A clear "Manage" button at the bottom of the card,
-which opens the detailed management modal for that user.
-
-
-### 5.10.2 Modal Windows for Specific Actions
-
-To prevent clutter and ensure actions are deliberate, key functions will be handled in modal
-dialogs.
-●​ "Add User" Modal:
-○​ This modal allows administrators to create a new account by providing a
-unique user name and a preliminary password.
-●​ "User Details & Management" Modal:
-○​ Clicking the "Manage" button next to a user in the list will open a
-comprehensive modal dedicated to that specific user. This keeps the main list
-clean and focuses the admin's attention.
-○​ The modal header will display the user's name and email.
-○​ Administrator Rights: A toggle switch or a button to "Make Administrator" or
-"Revoke Administrator Rights". The page will update to show the new button
-state after the action is confirmed.
-○​ Override Password: A section with a single "New Preliminary Password"
-input field and a button to "Set New Password".
-○​ Delete User: A prominent, destructive-style (Alert Red) "Delete User
-Account" button.
-
+---
 
 ## 6. Workflows
 
+### 6.1 Login
 
-## 6.6 Administrator rights set up
+1. Non-authenticated user arrives at the login page.
+2. Frontend provides username input, password input, and "Log In" button.
+3. User enters credentials and clicks "Log In".
+4. Frontend sends credentials to `POST /api/auth/token` (OAuth2 password flow).
+5. Backend verifies credentials; returns JWT access token (30-minute expiry) on success
+   or 401 on failure.
+6. Frontend stores token in localStorage, fetches user profile from `GET /api/auth/me`,
+   and redirects to the main page.
 
-●​
-●​
-●​
-●​
+### 6.2 Logout
 
-The authenticated administrator starts at any page.
-The Front-end provides a button to enter the user management page.
-The authenticated administrator clicks that button.
-The Front-end redirects the authenticated administrator to the user management
-page.
-●​ The Front-end displays all registered users.
-●​ The authenticated administrator selects one user from the card view.
-○​ If selected user is already administrator:
-■​ The Front-end displays the “Revoke administrator rights” button.
-■​ The authenticated administrator clicks the “Revoke administrator
-rights” button.
-■​ The Front-end sends the request to the Back-end.
-■​ The selected user is automatically logged out.
-■​ The Back-end sets the ‘Administrator’ flag to false for the selected
-user.
-■​ The Back-end sends the confirmation to the Front-end.
-■​ The Front-end updates the view by hiding the “Revoke administrator
-rights” button and displaying the “Make administrator” button.
-○​ If selected user is not yet administrator:
+1. User clicks "Logout" in the navigation menu.
+2. Frontend removes the JWT token from localStorage and resets application state.
+3. Frontend redirects the user to the Login page.
+   (Logout is client-side only; JWTs are stateless.)
 
-■​ The Front-end displays the “Make administrator” button.
-■​ The authenticated administrator clicks the “Make administrator”
-button.
-■​ The Front-end sends the request to the Back-end.
-■​ The selected user is automatically logged out.
-■​ The Back-end sets the ‘Administrator’ flag to true for the selected user.
-■​ The Back-end sends the confirmation to the Front-end.
-■​ The Front-end updates the view by hiding the “Make administrator”
-button and displaying the “Revoke administrator rights” button.
+### 6.3 Create a Purchase from a Receipt
 
+1. User navigates to the Scan Receipt page.
+2. User uploads up to 5 receipt images (JPEG/PNG).
+3. User optionally crops and rotates each image using the image editor.
+4. User clicks "Scan Receipt".
+5. Frontend sends images as `multipart/form-data` to `POST /api/ocr/upload`.
+6. Backend encodes images as base64 data URIs and sends them to the Mistral Pixtral
+   Vision model for direct image-to-structured-data extraction.
+7. Backend applies friendly name mapping logic to all extracted items.
+8. Backend applies category mapping to auto-fill categories where possible.
+9. Backend returns the structured item list with friendly names and categories.
+10. Frontend navigates to the Purchase Editor pre-filled with extracted data, passing
+    image blobs via React Router location state.
+11. User verifies, corrects, and finalizes the purchase, then clicks "Confirm Purchase".
+12. Frontend validates all fields, auto-creates any new category names, and sends the
+    complete purchase payload to `POST /api/purchases`.
+13. Backend stores the purchase, items, contributors, images, and logs in the database.
+14. Backend applies the friendly name storing logic for future mapping improvements.
 
-## 6.8 Login
+### 6.4 Manually Create a Purchase
 
-●​ The non-authenticated user starts at the login page.
-●​ The Front-end provides a user name input field, a password field and a “Login”
-button.
-●​ The non-authenticated user enters his user name, his password and clicks the
-“Login” button.
-●​ The Front-end sends the request to the Back-end
-●​ The Back-end checks the existence of the account
-○​ If account does not exist:
-■​ The Back-end informs the Front-end about the denial.
-■​ The Front-end displays an “Account not known, not validated, or
-wrong password” notification.
-■​ The non-authenticated user restarts by putting in again the login
-information.
-○​ If account exists:
-■​ The Back-end checks if the password is correct.
-●​ If the password is not correct:
-○​ The Back-end informs the Front-end about the denial.
-○​ The Front-end displays an “Account not known, not
-validated, or wrong password” notification.
-○​ The non-authenticated user restarts by putting in again
-the login information.
-●​ If the password is correct:
-○​ The Back-end informs the Front-end about the success
-○​ The user is now considered as an authenticated user.
-○​ The Front-end redirects the authenticated user to the
-main page.
+1. User navigates to the Purchase Editor (from a project or directly).
+2. User fills in purchase metadata (name, date, payer, project).
+3. User adds items via the "Add Item" button.
+4. For each item, user sets: name, quantity, price, optional tax/discount, categories,
+   and contributors.
+5. Category dropdowns follow hierarchical constraints (Cat 2 requires Cat 1, etc.) but
+   support creating new categories inline.
+6. Items can be reordered via drag-and-drop.
+7. User clicks "Confirm Purchase".
+8. Same validation and submission flow as Step 11-14 in Section 6.3.
 
+### 6.5 Delete a Purchase
 
-## 6.9 Logout
+1. User opens a purchase in the Purchase Editor and clicks "Delete Purchase".
+2. Frontend displays a confirmation modal.
+3. On confirmation, frontend sends `DELETE /api/purchases/{purchase_id}`.
+4. Backend verifies the user is an active participant in the purchase's project (or is an
+   administrator).
+5. Backend deletes the purchase and all associated items, contributors, images, and logs.
+6. Frontend redirects to the main page or project page.
 
-●​
-●​
-●​
-●​
-●​
-●​
+### 6.6 Project Lifecycle
 
-The authenticated user starts at any page.
-The Front-end provides a “Logout” button.
-The authenticated user clicks the “Logout” button.
-The Front-end sends the request to the Back-end.
-The Back-end sets the user to logged out.
-The Front-end sets the user to logged out.
+1. User creates a project (name, description, optional image, participant list).
+2. Creator is automatically added as an active participant.
+3. All active participants have equal rights to manage the project: add/remove
+   participants, edit project details, create/delete purchases and payments.
+4. When a participant leaves a project, they are soft-removed (`is_active = False`).
+   Their historical contributions are preserved but they can no longer see the project
+   or its data.
+5. When the last active participant leaves, the project is automatically deleted.
 
-●​ The Front-end redirects the user to the Login page.
+### 6.7 Money Flow Settlement
 
+1. For a given project, the system calculates net balances by summing all purchases
+   (who paid vs. who contributed) and all direct payments.
+2. A greedy settlement algorithm optimizes the debt chain to minimize the number of
+   transactions needed to fully settle all debts.
+3. Users can view the optimized settlement plan and record direct payments to execute it.
+4. The global Money Flow page aggregates settlement data across all of the user's
+   active projects.
 
-## 6.10 Create a Purchase from a receipt
+### 6.8 Administrator Rights
 
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
+1. Administrator navigates to Admin Tools.
+2. Selects a user and opens the "Manage User" modal.
+3. Can toggle administrator rights (revoke or grant). The affected user's subsequent
+   requests will reflect the new role immediately (JWT contains the username; the
+   backend checks the `administrator` flag on each protected request).
+4. Can override a user's password.
+5. Can delete or anonymize a user (anonymization preserves historical data).
 
-The authenticated user starts from the main page.
-The Front-end provides a “Scan receipt” button.
-The authenticated user clicks the “Scan receipt” button.
-The Front-end opens a file picker that allows the authenticated user to select up to 5
-(JPEG, PNG or HEIC) images.
-The Front-end provides the means to rotate and crop each image.
-The authenticated user rotates the image and crops them
-The Front-end provides an “Upload image(s)” button.
-The authenticated user clicks the “Upload image(s)” button.
-The Front-end sends the image(s) to the Back-end.
-The Front-end displays a “Processing ongoing” notification to the authenticated user.
-The Back-end calls an API for each image.
-The API returns the extracted items from the image.
-The Back-end collects and merges all items from all images.
-The Back-end applies the [Friendly Name Mapping] Logic for each item.
-The Back-end sends the results to the Front-end.
-The Front-end displays each item and its parameters in a list.
-The Front-end displays a name input field for the purchase.
-The Front-end displays a date input field for the purchase.
-The Front-end displays an “Add Tax” check box which is unticked by default.
-The Front-end displays a “Apply discounts” check box which is unticked by default.
-The Front-end displays a “Confirm purchase” button.
-The Front-end displays a “Delete” button.
-The authenticated user enters a name for the purchase which sets by default the
-current date.
-The authenticated user modifies the date for the purchase, if necessary.
-The authenticated user updates the parameters of the items, if necessary
-The authenticated user clicks the “Confirm purchase” button.
-The Front-end checks if all parameters are conform
-○​ If not all parameters are conform on Front-end:
-■​ The Front-end highlights parameters that are not conform.
-■​ The Front-end displays a notification about the non-conformity.
-■​ The authenticated user has to correct all parameters before
-proceeding.
-○​ If all parameters are conform on Front-end:
-■​ The Front-end sends the request to the Back-end.
-■​ The Back-end checks the conformity of all parameters.
-●​ If not all parameters conform on Back-end:
-○​ The Back-end sends a notification to the Front-end.
-○​ The Front-end highlights parameters that do not
-conform.
-○​ The Front-end displays a notification about the
-non-conformity.
+### 6.9 Display Analytics
 
-○​ The authenticated user has to correct all parameters
-before proceeding.
-●​ If all parameters conform on Back-end:
-○​ The Back-end applies the [Friendly Name Storing]
-Logic to store Friendly Names for each item.
-○​ The Back-end saves the images in the Cloud storage.
-○​ The Back-end stores the purchase in the database.
-○​ The Back-end informs the Front-end about the
-completion.
-○​ The Front-end displays a notification that the purchase
-was saved.
-○​ The Front-end displays a summary of the purchase on
-top of the screen.
+1. User navigates to the Analytics page.
+2. User applies filters in the sidebar (time frame, projects, categories, search terms).
+3. User selects visualization type (Cumulative, Individual, Flow).
+4. User toggles scope between "My Share" and "Total".
+5. Frontend sends filter parameters to `GET /api/purchases/stats/analytics`.
+6. Backend queries purchases across the user's active projects, applies filters,
+   computes aggregations, and returns chart data + KPI summaries.
+7. Frontend renders the selected chart and KPI cards.
+8. User can save the current filter configuration for later recall.
 
-
-## 6.11 Manually create a Purchase
-
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-●​
-
-The authenticated user starts from the main page.
-The Front-end provides a “Create Purchase” button.
-The authenticated user clicks the “Create Purchase” button.
-The Front-end displays a name input field for the purchase.
-The Front-end displays a date input field for the purchase.
-The Front-end displays an “Add item” button.
-The Front-end displays an “Add Tax” check box which is unticked by default.
-The Front-end displays a “Apply discounts” check box which is unticked by default.
-The Front-end displays a “Confirm purchase” button.
-The Front-end displays a “Delete” button.
-The Front-end displays each created item and its parameters in a list.
-The authenticated user adds and modifies up to 100 items per purchase.
-The authenticated user provides a name for the purchase.
-The authenticated user modifies the date of the purchase, if necessary.
-The authenticated user clicks on “Confirm purchase” button.
-The Front-end checks if all parameters are conform
-○​ If not all parameters are conform on Front-end:
-■​ The Front-end highlights parameters that are not conform.
-■​ The Front-end displays a notification about the non-conformity.
-■​ The authenticated user has to correct all parameters before
-proceeding.
-○​ If all parameters are conform on Front-end:
-■​ The Front-end sends the request to the Back-end.
-■​ The Back-end checks the conformity of all parameters.
-●​ If not all parameters conform on Back-end:
-○​ The Back-end sends a notification to the Front-end.
-○​ The Front-end highlights parameters that do not
-conform.
-○​ The Front-end displays a notification about the
-non-conformity.
-
-○​ The authenticated user has to correct all parameters
-before proceeding.
-●​ If all parameters conform on Back-end:
-○​ The Back-end applies the [Friendly Name Storing]
-Logic to store Friendly Names for each item.
-○​ The Back-end saves the images in the Cloud storage.
-○​ The Back-end stores the purchase in the database.
-○​ The Back-end informs the Front-end about the
-completion.
-○​ The Front-end displays a notification that the purchase
-was saved.
-○​ The Front-end displays a summary of the purchase on
-top of the screen.
-
-
-## 6.12 Delete a Purchase
-
-●​ The authenticated user triggers this process from any step of either a manual
-purchase creation, a purchase creation by scanning a receipt or a purchase
-modification.
-●​ The Front-end displays a “Delete” button.
-●​ The authenticated user clicks the “Delete” button.
-●​ The Front-end displays a pop-up if the authenticated user really wants to cancel
-which includes that unsaved data is lost.
-○​ If the authenticated user confirms the deletion:
-■​ The Front-end informs the Back-end.
-■​ The Back-end checks if any entries for this purchase exist in the
-database.
-●​ If entries exist in the database:
-○​ The Back-end checks if the requestor is the creator of
-the purchase or a contributor.
-■​ If the requestor is the creator or a contributor of
-the purchase:
-●​ The Back-end deletes any images linked
-to this purchase in the cloud storage.
-●​ The Back-end deletes the entries in the
-database linked to this purchase.
-●​ The Back-end informs the Front-end
-about the deletion completion.
-●​ The
-Front-end
-redirects
-the
-authenticated user to the main-page.
-●​ The Front-end removes any traces of the
-deleted purchase.
-■​ If the requestor is not the creator or a
-contributor of the purchase:
-●​ The Back-end rejects the deletion
-request.
-●​ The Back-end informs the Front-end
-about the rejection of the request.
-
-●​ The Front-end displays a message to
-the end requestor.
-●​ If no entries exist in the database:
-○​ The Back-end informs the Front-end about the deletion
-completion.
-○​ The Front-end redirects the authenticated user to the
-main-page.
-○​ The Front-end removes any traces of the deleted
-purchase.
-○​ If the authenticated user rejects the deletion:
-■​ The pop-up closes.
-■​ The authenticated user remains on the page.
-
-
-## 6.15 Display purchase statistic
-
-●​ The authenticated user starts from any page.
-●​ The Front-end displays a “Statistics” Button.
-●​ The Authenticated User clicks the “Statistics” Button and the user is redirected to the
-Statistics page.
-●​ The Front-End displays a filter menu.
-●​ The authenticated user applies the filters he wants.
-●​ The Front-end sends the request to the Back-end
-●​ The Back-end retrieves the data from the database.
-●​ The Back-end returns the data to the Front-End
-●​ The Front-end displays a summary view.
-●​ The Front-end uses the retrieved data to update the summary view.
-●​ The authenticated user can do further filtering adaptations.
-
+---
 
 ## 7. Permissions & Access Control
 
-●​ A standard User can view,edit and delete a purchase if they are the original
-creator_user_id OR if their user_id appears in the contributors or
-payers table for at least one item within that purchase.
-●​ An Administrator bypasses these checks and has universal access. Admin actions
-on other users' purchases must still be logged with the admin's identity.
+* A standard **User** can view, edit, and delete purchases and payments in projects
+  where they are an **active participant** (`is_active = True`).
+* A standard User can only see projects they are actively participating in.
+* Analytics, search, and purchase lists are scoped to the user's active projects.
+* An **Administrator** bypasses these checks and has universal access to all users,
+  projects, purchases, and payments. Admin actions on others' data are logged with the
+  admin's identity.
+* When a user leaves a project (soft-deactivated), they lose visibility of the project and
+  all its data. Their historical contributions remain in the database for integrity but they
+  are displayed as "(removed)" in the UI where applicable.
 
+---
 
-## 8. Contributors & Sharing System
+## 8. Contributors & Payment System
 
-When assigning a contributor and a payer, the UI will show a dropdown list of all registered
-users on the system.
+### 8.1 Contributor Assignment
 
+* When assigning contributors to an item, the UI shows a dropdown of **active project
+  participants** (not all registered users).
+* Distribution is always equal among contributors (Section 10.1).
+* A "Global Contributors" field on the purchase allows bulk-assigning contributors to
+  all items.
+
+### 8.2 Payment System
+
+* Users can record direct payments between project participants to settle debts.
+* Each payment has: sender, receiver, amount, date, and optional note.
+* Payments are factored into the money flow settlement calculation.
+
+---
 
 ## 9. Backend Processing & Logic
 
+### 9.1 Friendly Name Mapping Logic
 
-## 9.1 Friendly Name Mapping Logic (Pseudocode)
-
+```
 FUNCTION get_friendly_name(original_name, user_id):
+    substrings = generate_all_substrings(original_name.lower())
+    // "Milk Frsh Alpine" → [milk, frsh, alpine, milk frsh, milk frsh alpine, frsh alpine]
 
-substrings = generate_all_substrings(original_name.lower())
-//Example: “Milk Frsh Alpine” will be decomposed to [milk, frsh, alpine, milk frsh, milk frsh
-aline, frsh alpine]
-// Step 1: Check user-specific mappings
-user_mappings = find_mappings_for(substrings, created_by=user_id)
-IF user_mappings is not empty:
-winner = find_most_common_friendly_name(user_mappings)
-IF winner is not a tie:
-RETURN winner
-// Step 2: Check global mappings
-global_mappings = find_mappings_for(substrings, created_by=ANY_USER)
-IF global_mappings is not empty:
-winner = find_most_common_friendly_name(global_mappings)
-IF winner is not a tie:
-RETURN winner
-// Step 3: Default to original
-RETURN original_name
+    // Step 1: Check user-specific mappings
+    user_mappings = find_mappings_for(substrings, created_by=user_id)
+    IF user_mappings is not empty:
+        winner = find_most_common_friendly_name(user_mappings)
+        IF winner is not a tie:
+            RETURN winner
 
+    // Step 2: Check global mappings
+    global_mappings = find_mappings_for(substrings, created_by=ANY_USER)
+    IF global_mappings is not empty:
+        winner = find_most_common_friendly_name(global_mappings)
+        IF winner is not a tie:
+            RETURN winner
 
-## 9.2 Friendly Name Setting Logic (Pseudocode)
+    // Step 3: Default to original
+    RETURN original_name
+```
 
-FUNCTION set_friendly_name(original_name, friendly_name user_id):
-substrings = generate_all_substrings(original_name.lower())
-//Example: “Milk Frsh Alpine” will be decomposed to [milk, frsh, alpine, milk frsh, milk frsh
-alpine, frsh alpine]
-// Step 1: Check user-specific mappings
-for each substring in substring:
-insert_or_update_database(user_id,substring,friendly_name)
-Typos and wrong extractions will not be automatically corrected. Instead, they will just be
-incorporated in the friendly name mapping. Which means that, if a first purchase identified
-“Milk Frsh Alpine” this will be mapped to [milk, frsh, alpine, milk frsh, milk frsh alpine, frsh
-alpine]. But if in a second purchase the API extracts “Milk Frsh Aline” then the database will
-be appended with [aline, milk frsh aline, frsh aline]. But the entries from the first purchase
-remain in the database.
+### 9.2 Friendly Name Storing Logic
 
+```
+FUNCTION set_friendly_name(original_name, friendly_name, user_id):
+    substrings = generate_all_substrings(original_name.lower())
+    for each substring in substrings:
+        insert_or_update_database(user_id, substring, friendly_name)
+```
 
-## 9.3 Cloud Storage
+Typos and wrong extractions are not automatically corrected. Instead, they are
+incorporated into the mapping for potential future partial matches. Mappings accumulate
+over time; user-specific mappings take precedence over mappings from other users.
 
-Cloud storage shall use an abstraction layer to assure a simple change between multiple
-cloud storage providers and also a local storage solution. The source code for the
-abstraction layer template looks like this:
-class StorageInterface:
-"""A generic contract for all storage operations."""
+### 9.3 Receipt Extraction (Vision AI)
 
-def upload_file(self, source_path, destination_name):
-"""Uploads & updates a file to the storage."""
-raise NotImplementedError
-def delete_file(self, file_name):
-"""Deletes a file from the storage."""
-raise NotImplementedError
-def get_file_url(self, file_name):
-"""Gets a publicly accessible URL for a file."""
-raise NotImplementedError
+Receipt extraction uses the **Mistral Pixtral Vision model** for direct image-to-JSON
+analysis. There is no intermediate OCR (Tesseract) or OpenCV preprocessing step in the
+production pipeline.
 
+1. User uploads up to 5 receipt images (JPEG/PNG).
+2. Backend encodes each image as a base64 data URI.
+3. Images are sent to the Mistral Pixtral-12B-2409 vision model with a system prompt
+   instructing it to extract purchased items, quantities, and prices in structured JSON
+   format.
+4. The Vision AI returns a structured list of items with extracted names, quantities,
+   and prices.
+5. Extracted names are run through the friendly name mapping service to resolve
+   human-readable names.
+6. Resolved friendly names are run through the category mapping service to auto-fill
+   any previously learned category assignments.
+7. Results are returned to the frontend for user review in the Purchase Editor.
 
-## 9.3 Receipt extract
+The Mistral API call is executed in a thread pool via FastAPI's `run_in_threadpool` to
+avoid blocking the async event loop.
 
-Extracting the items from the receipt shall be exactly done as described here. The quality of
-the receipt images are often not good. This leads to some false extracts. this can be reduced
-by applying some pre-processing on the image. The exact code to be used for the
-preprocessing is this:​
-def preprocess_image(image: np.ndarray, threshold1: int, threshold2: int) -> np.ndarray:
-filtered = image.copy()
-gray_image = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-gray_image = cv2.blur(gray_image,(3,3))
-contour_thresh = cv2.threshold(gray_image, 0, 255,
-cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-​
-​
+### 9.4 Category Mapping Service
 
-# Invert
-contour_thresh = 255 - contour_thresh
+Categories are learned per user. When a user assigns categories to an item in the
+Purchase Editor, the mapping is stored:
 
-​
-contours = cv2.findContours(contour_thresh, cv2.RETR_EXTERNAL,
-cv2.CHAIN_APPROX_SIMPLE)
-​
-contours = contours[0] if len(contours) == 2 else contours[1]
-​
+```
+category_mappings:
+    mapping_id (PK), user_id (FK), friendly_name, category_level_1, category_level_2,
+    category_level_3
+```
 
-for contour in contours:
-​ ​
-if cv2.contourArea(contour) > threshold2:
-​
-​
-cv2.drawContours(filtered, [contour], -1, color=(255, 255, 255),
-thickness=cv2.FILLED)
-​
-filtered_gray = cv2.cvtColor(filtered,cv2.COLOR_BGR2GRAY)
-​
-filtered_image = cv2.threshold(filtered_gray, threshold1, 255,
-cv2.THRESH_BINARY)[1]
-​
+On future purchases, when the same friendly name appears, the stored category mapping
+is automatically applied. User-specific mappings take precedence; if none exist, mappings
+from other users serve as a global fallback.
 
-return filtered_image
+### 9.5 Money Flow Settlement Algorithm
 
-def extract_information(image: np.ndarray) -> str:
-return pytesseract.image_to_string(image)
+The settlement engine is a **greedy algorithm** that:
+1. Computes net balances for each project participant by netting all purchases (who paid
+   vs. who contributed) and all direct payments.
+2. Sorts participants by net balance (largest creditor first, largest debtor last).
+3. Pairs the largest creditor with the largest debtor and settles the smaller of the two
+   amounts.
+4. Repeats until all balances are zero.
+5. Returns the minimal set of suggested payments.
 
-def analyze_information(extracted_text: str) -> Dict:
-api_key = os.environ["MISTRAL_API_KEY"]
-​
-model = "mistral-small-latest"
-​
+### 9.6 Repository Layer (Data Access)
 
-client = Mistral(api_key=api_key)
+Database access is encapsulated in repository modules:
 
-​ system_message ="You are an expert extraction algorithm. The text is a shopping
-receipt. Only extract the purchased items including their price from the text. If you do not
-know the value of an attribute asked to extract, you may omit the attribute's value. ignore the
-total price. Only output the data with no further explanation or comment. use an empty string
-instead of null. split the items by a newline."
-messages = [{'role':"system",'content': system_message},{'role':"user",'content':
-extracted_text}]
-​
+**User Repository** (`repositories/user_repo.py`)
+* `create_user(name, password, administrator=False, ...)` — Creates a new user.
+* `get_user_by_name(name)` — Full user data by username.
+* `get_user_by_id(user_id)` — Full user data by ID.
+* `get_all_users()` — List of all registered users.
+* `set_administrator_rights(user_id, is_admin)` — Grant/revoke admin.
+* `update_user_password(user_id, new_password_hash)` — Change password.
+* `update_user_name(user_id, new_name)` — Change username.
+* `update_user_tax_settings(user_id, default_tax_rate, common_tax_rates)` — Tax prefs.
+* `delete_user(user_id)` — Delete or anonymize (preserves history if user has dependencies).
+* `cleanup_unreferenced_dummy_users()` — Remove orphaned dummy accounts.
 
-return client.chat.complete(model=model,messages=messages)
+**Purchase Repository** (`repositories/purchase_repo.py`)
+* `create_purchase(...)` — Create with items, contributors, and images in one transaction.
+* `get_purchase_by_id(purchase_id)` — Full purchase with all related data.
+* `update_purchase(purchase_id, ...)` — Modify purchase metadata and items.
+* `delete_purchase(purchase_id)` — Cascade-deletes items, contributors, images, logs.
+* `get_recent_purchases(user_id, limit=5)` — Recent purchases across user's projects.
+* `get_purchases_for_user(user_id, filters, sort_by)` — Filtered/sorted results.
+* `get_analytics_data(user_id, time_frame, categories, project_ids, scope)` — Aggregated data.
+* `create_receipt_image(purchase_id, file_path, filename)` — Link image to purchase.
+* `create_purchase_log(purchase_id, user_id, message)` — Audit log entry.
+* `get_logs_for_purchase(purchase_id)` — Retrieve all log entries.
 
-async def process_image(image_location : str) -> Dict:
-​
-#Step 0: Load image​
-TODO [Please write this code to load the image into the variable
-opencv_image = …
-threshold1 = 100
-threshold2 = 200
-# Step 1: Pre-process the image
-​
-preprocessed_image = await run_in_threadpool(apply_threshold, opencv_image,
-threshold1, threshold2)
-​
-​
+**Project Repository** (`repositories/project_repo.py`)
+* `create_project(name, description, creator_id, participant_ids, image_path)` — Create new project.
+* `get_user_projects(user_id)` — Active projects for a user.
+* `get_project_by_id(project_id)` — Full project with participants.
+* `update_project(project_id, name, description, image_path)` — Edit project.
+* `add_participant(project_id, user_id)` — Add active participant.
+* `remove_participant(project_id, user_id)` — Soft-deactivate participant.
+* `delete_project(project_id)` — Cascade-deletes project and all related data.
+* `get_project_stats(project_id)` — Total and per-user spending.
 
-# Step 2: Extract text from the processed image
-extracted_text = await run_in_threadpool(extract_text, preprocessed_image)
+**Payment Repository** (`repositories/payment_repo.py`)
+* `create_payment(...)` — Record a direct payment.
+* `get_payments_for_user(user_id, project_id)` — Filtered payment history.
+* `delete_payment(payment_id)` — Remove a payment record.
+* `get_money_flow_balances(project_id)` — Compute optimized settlement plan.
 
-​
-​
+**Category Repository** (`repositories/category_repo.py`)
+* `create_category(user_id, category_name, level)` — Register a new category.
+* `get_all_categories()` — All distinct category names.
+* `get_categories_by_user_and_level(user_id, level)` — Per-user, per-level lookup.
 
-# Step 3: Analyze the extracted text
-analysis_result = await run_in_threadpool(analyze_text, extracted_text)
+**Item Repository** (`repositories/item_repo.py`)
+* `add_item_to_purchase(purchase_id, ...)` — Add item to a purchase.
+* `update_item(item_id, ...)` — Modify item details.
+* `delete_item(item_id)` — Remove item and its contributors.
+* `add_contributor_to_item(item_id, user_id)` — Assign contributor.
 
-
-## 9.4 Administrator notification
-
-In some cases, the administrator has to validate certain adaptations to user accounts.
-The administrator is not actively informed about that. Only when opening or refreshing the
-user management page, he will see the open requests.
-
-
-## 9.4 Database calls
-
-The database should be encapsulated by a database.py module. This module limits the
-access to the database by providing functions. The list of functions to be implemented is
-here:
-
-9.4.1 User Management Functions
-●​ create_user(user_name): Creates a new user with a given user name.
-●​ get_user_by_name(user_name): Retrieves a user's complete data based on their
-user name.
-●​ get_user_by_id(user_id): Retrieves a user's complete data based on their user_id.
-●​ get_user_id_by_name(user_name): Retrieves a user's ID based on their user_name.
-●​ update_user_password(user_name, new_password_hash): Updates the
-password_hash for a specified user.
-●​ delete_user(user_id): Removes a user and all their associated, non-shared data from
-the database.
-●​ set_administrator_rights(user_id, is_admin): Grants or revokes administrator
-privileges for a user.
-●​ get_all_users(): Retrieves a list of all registered users.
-
-
-### 9.4.2 Purchase Management Functions
-
-●​ create_purchase(creator_user_id, payer_user_id, purchase_name, purchase_date,
-tax_is_added, discount_is_applied): Creates a new purchase record in the database.
-●​ get_purchase_by_id(purchase_id): Retrieves all details for a single purchase.
-●​ update_purchase(purchase_id, purchase_name, purchase_date, payer_user_id,
-tax_is_added, discount_is_applied): Modifies the metadata of an existing purchase.
-●​ delete_purchase(purchase_id): Deletes a purchase and its associated items and
-logs.
-●​ get_recent_purchases(user_id, limit=5): Retrieves the most recent purchases for a
-specific user.
-●​ get_purchases_for_user(user_id, filters=None, sort_by=None): Fetches all purchases
-where the user is either the creator or a contributor, with optional filtering and sorting.
-●​ check_purchase_existence(purchase_id): Checks if a purchase with the given ID
-exists in the database.
-
-
-### 9.4.3 Item and Contributor Functions
-
-●​ add_item_to_purchase(purchase_id, original_name, friendly_name, quantity, price,
-category_level_1, category_level_2, category_level_3): Adds a new item to an
-existing purchase.
-●​ update_item(item_id, friendly_name, quantity, price, category_level_1,
-category_level_2, category_level_3): Modifies the details of an item.
-●​ delete_item(item_id): Removes an item from a purchase.
-●​ get_items_for_purchase(purchase_id): Retrieves all items associated with a
-particular purchase.
-●​ add_contributor_to_item(item_id, user_id): Assigns a user as a contributor to a
-specific item.
-●​ remove_contributor_from_item(item_id, user_id): Removes a user's contribution from
-an item.
-●​ get_contributors_for_item(item_id): Retrieves all contributors for a given item.
-●​ is_user_sole_contributor_and_payer(user_id): Checks which purchases have the
-specified user as the only payer and contributor, for deletion purposes.
-
-9.4.4 Category and Friendly Name Functions
-●​ create_category(user_id, category_name, level): Adds a new category to the
-database, associated with a user.
-●​ get_all_categories(): Retrieves all unique category names for populating dropdown
-menus.
-●​ find_friendly_name_mappings(substrings, user_id=None): Searches for friendly
-name mappings, either user-specific or global.
-●​ create_friendly_name_mapping(user_id, substring, friendly_name): Creates or
-updates a mapping between an extracted substring and a friendly name.
-
-
-### 9.4.6 Logging Functions
-
-●​ create_purchase_log(purchase_id, user_id, log_message): Adds a log entry for an
-action performed on a purchase.
-●​ get_logs_for_purchase(purchase_id): Retrieves all log messages associated with a
-given purchase.
-
+---
 
 ## 10. Front-End Logic
 
+### 10.1 Contribution Splitting
 
-## 10.1 Contribution splitting
+When multiple contributors are selected for an item, the distribution is always equal.
+For an item costing 1.00 EUR:
+* 3 Contributors: each pays 0.34 EUR (or 0.33/0.33/0.34 to match the total).
+* 4 Contributors: each pays 0.25 EUR.
+* 5 Contributors: each pays 0.20 EUR.
 
-When multiple contributors are selected, the distribution is always equal (for simplicity). This
-means, if an item cost 1.00€ then:
-3 Contributors: each of them contributes with 0.34€
-4 Contributors: each of them contributes with 0.25€
-5 Contributors: each of them contributes with 0.20€
+Costs are calculated client-side in the Purchase Editor and displayed per-contributor.
 
-10.2: Category assignment
-At the creation of an item, categories must be set in order (first Category1, then Category2,
-then Category3) freely chosen from the available dropdown menu or by writing a new
-category name. In that stage an underlying category must not exist when the category above
-was not set. This means that Category3 is automatically considered as empty when
-Category2 is empty. And Category2 is automatically considered as empty when Category1 is
-empty. A user can choose how many categories he sets (from zero to all three), but he must
-respect the order.
-When filtering purchases in the Analytic page, a user can choose an underlying category
-without selecting the upper category. He could select a Category3 without selecting a
-Category2 or Category1. This flexibility is essential because the Category3 could exist for
-multiple Category2.
+### 10.2 Category Assignment
 
+At item creation, categories must be set in order (Category 1 → Category 2 → Category 3).
+* Category 2 is disabled until Category 1 is set.
+* Category 3 is disabled until Category 2 is set.
+* Clearing Category 1 automatically clears Category 2 and 3.
+* Categories can be selected from existing options or typed as new values inline
+  (CreatableSelect component).
+* A user can choose 0 to 3 categories per item but must respect the hierarchy.
 
-## 11. Database Structure (PostgreSQL/SQLite
+When filtering in the Analytics page, categories are independently selectable (a Category 3
+can be selected without a Category 2 or 1) for flexible drill-down.
 
-Detailed)
+### 10.3 State Management (Zustand)
 
-●​ users:
-○​ user_id (SERIAL PRIMARY KEY), name(VARCHAR(30), UNIQUE),
-password_hash (VARCHAR(255)), administrator (BOOLEAN).
-●​ purchases:
-○​ purchase_id (SERIAL PRIMARY KEY), creator_user_id (INTEGER,
-FOREIGN KEY to users.user_id), payer_user_id (INTEGER,
-FOREIGN KEY to users.user_id), purchase_name (VARCHAR(255)),
-purchase_date (DATE)), tax_is_added (BOOLEAN) ,
-discount_is_applied (BOOLEAN).
-●​ items:
-○​ item_id (SERIAL PRIMARY KEY), purchase_id (INTEGER, FOREIGN
-KEY to purchases.purchase_id), original_name (TEXT),
-category_level_1 (TEXT), category_level_2 (TEXT),
-category_level_3 (TEXT), friendly_name (TEXT), quantity
-(INTEGER), price (DECIMAL(10, 2)), discount (DECIMAL(10, 2)),
-tax_rate (DECIMAL(5, 2)).
-●​ contributors:
-○​ contributor_id (SERIAL PRIMARY KEY), item_id (INTEGER,
-FOREIGN KEY to items.item_id), user_id (INTEGER, FOREIGN KEY
-to users.user_id).
-●​ categories:
-○​ category_id (SERIAL PRIMARY KEY), user_id (INTEGER, FOREIGN
-KEY to users.user_id), category_name (VARCHAR(30)), level
-(INTEGER).
-●​ purchase_logs:
-○​ log_id (SERIAL PRIMARY KEY), purchase_id (INTEGER), user_id
-(INTEGER), timestamp (TIMESTAMP), log_message (TEXT).
-●​ friendly_names:
-○​ friendly_name_id (SERIAL PRIMARY KEY), user_id (INTEGER),
-substring (TEXT), friendly_name(TEXT).
-●​ password_reset_tokens:
-○​ token_id (SERIAL PRIMARY KEY)
-○​ user_id (INTEGER, FOREIGN KEY to users.user_id, ON DELETE
-CASCADE)
-○​ token_hash (VARCHAR(255), UNIQUE, NOT NULL)
-○​ expires_at (TIMESTAMP, NOT NULL)
-●​
+**authStore** (`store/authStore.js`)
+* `user` — Current user object from `/auth/me`.
+* `token` — JWT from localStorage.
+* `isAuthenticated` — Derived from token presence.
+* Actions: `login(username, password)`, `logout()`, `checkAuth()`.
 
+**projectStore** (`store/projectStore.js`)
+* `projects` — List of user's active projects.
+* `currentProject` — Currently viewed project detail.
+* Actions: `fetchProjects()`, `fetchProjectDetails(projectId)`, `createProject(FormData)`,
+  `deleteProject(projectId)`, `addParticipant()`, `removeParticipant()`, `updateProject()`.
+
+### 10.4 API Client (`api/axios.js`)
+
+* Base URL from `VITE_API_URL` environment variable or fallback to
+  `http://{hostname}:8002/api`.
+* Request interceptor auto-attaches `Authorization: Bearer {token}` header.
+* Named export functions for `getCategoriesByLevel(level)` and `createCategory()`.
+
+### 10.5 UI Component Library
+
+Custom dark-themed components used throughout:
+
+| Component | Purpose |
+|-----------|---------|
+| **FloatingInput** | Text/number/date input with animated floating label |
+| **ModernSelect** | Styled `<select>` with chevron icon |
+| **CreatableSelect** | Toggles between select dropdown and free-text input |
+| **TaxRateInput** | Tax rate selector with predefined + custom options |
+| **MultiSelect** | Multi-value checkbox dropdown |
+| **Switch** | Accessible toggle switch with animated knob |
+| **GlobalSearch** | Debounced full-text search with type-coded results |
+
+### 10.6 Routing (React Router v7)
+
+| Path | Page | Access |
+|------|------|--------|
+| `/login` | LoginPage | Public |
+| `/` | MainPage (Home) | Authenticated |
+| `/projects/:projectId` | ProjectDetailsPage | Authenticated, participant |
+| `/scan` | ScanReceiptPage | Authenticated |
+| `/purchases` | PurchaseList | Authenticated |
+| `/create-purchase` | PurchaseEditor (new) | Authenticated |
+| `/edit-purchase/:id` | PurchaseEditor (edit) | Authenticated, participant |
+| `/dashboard` | AnalyticsPage | Authenticated |
+| `/moneyflow` | MoneyFlowPage | Authenticated |
+| `/settings` | SettingsPage | Authenticated |
+| `/admin` | AdminTools | Administrator only |
+
+---
+
+## 11. Database Structure (PostgreSQL/SQLite)
+
+### 11.1 Core Tables (from original specification)
+
+**users**
+* `user_id` (SERIAL PRIMARY KEY)
+* `name` (VARCHAR(30), UNIQUE)
+* `password_hash` (VARCHAR(255))
+* `administrator` (BOOLEAN)
+* `is_dummy` (BOOLEAN) — For anonymized/deleted users
+* `default_tax_rate` (DECIMAL(5, 2))
+* `common_tax_rates` (TEXT) — JSON-encoded list of frequently used rates
+
+**purchases**
+* `purchase_id` (SERIAL PRIMARY KEY)
+* `project_id` (INTEGER, FOREIGN KEY to projects.project_id, nullable)
+* `creator_user_id` (INTEGER, FOREIGN KEY to users.user_id)
+* `payer_user_id` (INTEGER, FOREIGN KEY to users.user_id)
+* `purchase_name` (VARCHAR(255))
+* `purchase_date` (DATE)
+* `tax_is_added` (BOOLEAN)
+* `discount_is_applied` (BOOLEAN)
+* `position` (INTEGER) — Ordinal position of this purchase in the project
+
+**items**
+* `item_id` (SERIAL PRIMARY KEY)
+* `purchase_id` (INTEGER, FOREIGN KEY to purchases.purchase_id)
+* `original_name` (TEXT)
+* `friendly_name` (TEXT)
+* `quantity` (INTEGER)
+* `price` (DECIMAL(10, 2))
+* `discount` (DECIMAL(10, 2))
+* `tax_rate` (DECIMAL(5, 2))
+* `category_level_1` (TEXT)
+* `category_level_2` (TEXT)
+* `category_level_3` (TEXT)
+* `position` (INTEGER) — Ordinal position in the item list
+
+**contributors**
+* `contributor_id` (SERIAL PRIMARY KEY)
+* `item_id` (INTEGER, FOREIGN KEY to items.item_id)
+* `user_id` (INTEGER, FOREIGN KEY to users.user_id)
+
+**categories**
+* `category_id` (SERIAL PRIMARY KEY)
+* `user_id` (INTEGER, FOREIGN KEY to users.user_id)
+* `category_name` (VARCHAR(30))
+* `level` (INTEGER) — 1, 2, or 3
+
+**purchase_logs**
+* `log_id` (SERIAL PRIMARY KEY)
+* `purchase_id` (INTEGER, FOREIGN KEY to purchases.purchase_id)
+* `user_id` (INTEGER, FOREIGN KEY to users.user_id)
+* `timestamp` (TIMESTAMP)
+* `log_message` (TEXT)
+
+**friendly_names**
+* `friendly_name_id` (SERIAL PRIMARY KEY)
+* `user_id` (INTEGER, FOREIGN KEY to users.user_id)
+* `substring` (TEXT)
+* `friendly_name` (TEXT)
+
+**password_reset_tokens**
+* `token_id` (SERIAL PRIMARY KEY)
+* `user_id` (INTEGER, FOREIGN KEY to users.user_id, ON DELETE CASCADE)
+* `token_hash` (VARCHAR(255), UNIQUE, NOT NULL)
+* `expires_at` (TIMESTAMP, NOT NULL)
+
+### 11.2 Project & Collaboration Tables
+
+**projects**
+* `project_id` (SERIAL PRIMARY KEY)
+* `name` (VARCHAR(255))
+* `description` (TEXT)
+* `image_path` (TEXT, nullable) — Path to project cover image
+* `created_at` (TIMESTAMP)
+* `created_by_user_id` (INTEGER, FOREIGN KEY to users.user_id)
+
+**project_participants**
+* `participant_id` (SERIAL PRIMARY KEY)
+* `project_id` (INTEGER, FOREIGN KEY to projects.project_id)
+* `user_id` (INTEGER, FOREIGN KEY to users.user_id)
+* `joined_at` (TIMESTAMP)
+* `is_active` (BOOLEAN) — Soft-removal flag
+
+**payments**
+* `payment_id` (SERIAL PRIMARY KEY)
+* `project_id` (INTEGER, FOREIGN KEY to projects.project_id, nullable)
+* `creator_user_id` (INTEGER, FOREIGN KEY to users.user_id)
+* `payer_user_id` (INTEGER, FOREIGN KEY to users.user_id) — Sender
+* `receiver_user_id` (INTEGER, FOREIGN KEY to users.user_id) — Receiver
+* `amount` (DECIMAL(10, 2))
+* `payment_date` (DATE)
+* `note` (TEXT)
+
+**receipt_images**
+* `image_id` (SERIAL PRIMARY KEY)
+* `purchase_id` (INTEGER, FOREIGN KEY to purchases.purchase_id)
+* `file_path` (TEXT)
+* `original_filename` (TEXT)
+* `uploaded_at` (TIMESTAMP)
+
+**category_mappings**
+* `mapping_id` (SERIAL PRIMARY KEY)
+* `user_id` (INTEGER, FOREIGN KEY to users.user_id)
+* `friendly_name` (TEXT, INDEXED)
+* `category_level_1` (TEXT)
+* `category_level_2` (TEXT)
+* `category_level_3` (TEXT)
+
+**saved_filters**
+* `filter_id` (SERIAL PRIMARY KEY)
+* `user_id` (INTEGER, FOREIGN KEY to users.user_id)
+* `name` (VARCHAR(255))
+* `configuration` (TEXT) — JSON-encoded filter parameters
+* `created_at` (TIMESTAMP)
+
+---
 
 ## 12. Technology Stack & Architecture
 
-●​ Architecture: A containerized, API-driven application.
-●​ Containerization: LXC containers, managed via Proxmox.
+* **Architecture**: Containerized, API-driven SPA with RESTful backend.
+* **Backend**: Python 3.10+ / FastAPI / SQLAlchemy ORM / PyYAML
+  * Authentication: JWT (python-jose) + bcrypt (passlib)
+  * Server: Uvicorn with proxy headers support
+* **Frontend**: React 19 / Vite / Tailwind CSS / Zustand / React Router v7
+  * Charts: Recharts (AreaChart, ScatterChart, Sankey)
+  * Drag-and-Drop: @dnd-kit (core + sortable)
+  * Image Editing: react-cropper (Cropper.js)
+  * HTTP Client: Axios with auth interceptor
+  * Icons: Lucide React
+  * Typography: Poppins (Fontsource, weights 400/500/600/700)
+* **AI / OCR**: Mistral AI SDK — Pixtral-12B-2409 Vision model for direct image-to-JSON
+  receipt extraction
+* **Database**: PostgreSQL 15 (production) or SQLite (development/fallback)
+* **Containerization**: Docker & Docker Compose (dual-config: dev + prod)
+* **Deployment**: Proxmox LXC (via `moneyflow.sh` installer) or generic Linux Docker host
 
-●​ Backend: Python / FastAPI / JWT, SQLAlchemy / PyYAML.
-●​ Frontend: HTML, Bootstrap, Javascript, React / Vite / Tailwind CSS / Recharts /
-Zustand.
-●​ Database: PostgreSQL (for scalability) or SQLite (for simplicity).
-
+---
 
 ## 13. Configuration & Deployment
 
-Configuration File (config.yaml): All system settings are managed in this file. A sample
-structure:​
-# --- System Configuration --database:
-# 'sqlite' or 'postgresql'
-type: 'sqlite'
-# Path for SQLite file (used if type is 'sqlite')
-path: '/app/data/database.db'
-# Connection string for PostgreSQL (used if type is 'postgresql')
-url: 'postgresql://user:password@db:5432/receiptdb'
+### 13.1 Configuration File (`config.yaml`)
+
+```yaml
+# System Configuration
+database:
+  type: 'sqlite'                     # 'sqlite' or 'postgresql'
+  path: './data/database.db'         # SQLite file path
+  url: 'postgresql://user:password@db:5432/receiptdb'  # PostgreSQL connection
+
 storage:
-# Maximum size for a single image upload in megabytes.
-max_upload_size_mb: 25
-local: # Settings for when provider is 'local'
-image_path: '/app/images'
-# Credentials would be handled securely, e.g., via environment variables
-#mistral_api_key: ‘ENTER KEY HERE’
+  max_upload_size_mb: 25
+  local:
+    image_path: './images'           # Local image storage directory
 
-Receipt extract:
-# An external service that is called with the following parameter. Any relevant parameters
-would be added here.
-threshold1: #Service specific parameter
-threshold2: #Service specific parameter
-# Credentials would be handled securely, e.g., via environment variables
-●​ Deployment Process: A deploy.sh script will automate the process: pull the latest
-code from Git, start and enable the service to run the application.
+receipt_extract:
+  threshold1: 100                    # (legacy; not used in Vision AI pipeline)
+  threshold2: 200                    # (legacy; not used in Vision AI pipeline)
+```
 
+### 13.2 Environment Variables (`.env`)
+
+```env
+SECRET_KEY=<random_hex_secret>       # Required: JWT signing key
+MISTRAL_API_KEY=<api_key>            # Required: Mistral AI API key
+DATABASE_TYPE=postgresql             # Optional: overrides config.yaml
+DATABASE_URL=<connection_string>     # Optional: overrides config.yaml
+```
+
+### 13.3 Deployment
+
+**Development Mode** (`docker compose -f docker-compose.dev.yml up -d`)
+* Backend: Source-mounted for hot-reload (uvicorn `--reload`), port 8002.
+* Frontend: Vite dev server with HMR on port 5173.
+* Database: PostgreSQL on port 5432 (exposed for debugging).
+
+**Production Mode** (`docker compose up -d --build`)
+* Backend: Baked image, port 8002.
+* Frontend: Nginx serving built static files on port 80, proxying `/api` to backend.
+* Database: PostgreSQL (internal only).
+
+**Proxmox LXC** (`moneyflow.sh`)
+* Automated script that creates a Debian-based LXC container, installs Docker,
+  clones the repository, configures environment, and launches the production stack.
+
+**CI/CD**: GitHub Actions workflow deploys to dev server on push to `main` via SSH +
+Docker Compose rebuild.
+
+---
 
 ## 14. Platform & Future-Proofing
 
-●​ Web First: The primary application is a responsive web app accessible on desktop
-and mobile browsers.
-●​ Android and IOS App: The applications shall be designed in a way that it can be
-embedded in a web view to be installed as an Android or IOS App, without a
-re-development.
+* **Web First**: The primary application is a responsive web app accessible on desktop
+  and mobile browsers.
+* **Android and iOS App**: The application is designed so it can be embedded in a web view
+  to be installed as an Android or iOS App without re-development.
 
-15. Design
-The core philosophy is "Clarity in Focus." The application manages detailed financial data,
-so the design must prioritize legibility, intuitive navigation, and efficiency. The goal is to
-reduce cognitive load on the user, allowing them to process information and complete tasks
-quickly and without confusion. The aesthetic will be clean, modern, and data-centric,
-avoiding unnecessary clutter.
+---
 
+## 15. Design System
 
-## 15.1 Color Palette
+The core philosophy is **"Clarity in Focus."** The application manages detailed financial
+data, so the design must prioritize legibility, intuitive navigation, and efficiency. The
+aesthetic is clean, modern, and data-centric, avoiding unnecessary clutter. The application
+uses a **dark-only theme** to reduce eye strain during prolonged use.
 
-The color scheme is chosen to be professional, accessible, and easy on the eyes during
-prolonged use.
-●​ Primary Color (Deep Blue): Used for key interactive elements like primary buttons
-("Confirm Purchase," "Login"), navigation headers, and active links. This color
-inspires trust and stability.
-●​ Secondary Color (Light Gray): Used for backgrounds of pages, cards, and input
-fields. It provides a neutral, non-distracting canvas for the content.
-●​ Accent Color (Vibrant Green): Used for success notifications (e.g., "Purchase
-saved" ), positive financial indicators, and confirmation actions.
-●​ Warning/Error Color (Alert Red): Used for delete confirmations , error messages
-(e.g., "non-conformity of the password" ), and highlighting non-conformant fields.
-●​ Text Color (Charcoal Gray): A dark gray is used for body text and labels instead of
-pure black to reduce eye strain.
+### 15.1 Color Palette
 
+| Role | Hex | Usage |
+|------|-----|-------|
+| **Background** | `#0B0E14` | Page background |
+| **Surface** | `#151921` | Cards, modals, panels |
+| **Primary** | `#3B82F6` | Primary buttons, active tabs, links, focus rings |
+| **Secondary** | `#9CA3AF` | Muted text, secondary buttons |
+| **Tertiary** | `#6B7280` | Borders, dividers |
+| **Success** | `#22C55E` | Positive amounts, success confirmations |
+| **Error** | `#EF4444` | Delete actions, negative amounts, validation errors |
+| **Info** | `#60A5FA` | Informational elements |
 
-## 15.2 Typography
+### 15.2 Typography
 
-The typography will be clean, modern, and highly legible.
-●​ Font Family: A sans-serif font like Inter or Lato will be used for all text. These fonts
-are known for their excellent readability on screens.
-●​ Headings: h1, h2, h3 will be semi-bold to establish a clear visual hierarchy.
-●​ Body Text: Regular weight for all descriptive text and data within tables.
-●​ Labels & Helper Text: A slightly smaller font size for input field labels and helper text
-to distinguish them from primary content.
+* **Font Family**: Poppins (sans-serif), weights 400 (regular), 500 (medium), 600
+  (semibold), 700 (bold).
+* **Headings**: Semibold (600) to establish clear visual hierarchy.
+  * Hero headings: 32px bold.
+  * Section headers: 12px semibold uppercase with letter-spacing.
+  * Value displays: 36px bold for key metrics.
+* **Body Text**: Regular (400) at 14-16px.
+* **Labels**: Medium (500) with floating label animation on inputs.
 
+### 15.3 Layout and Structure
 
-## 15.3 Layout and Structure
+* **Cards**: Surface background (`#151921`), `rounded-3xl` (24px) border radius,
+  24px internal padding.
+* **Buttons**: `rounded-xl` (12px). Primary: solid blue background with white text.
+  Destructive: solid red background. Minimum touch target: 44px.
+* **Inputs**: `rounded-lg`, floating labels that shrink to top-left on focus or when filled.
+  Blue focus ring.
+* **Modals**: Fixed overlay (`bg-black/50 backdrop-blur-sm`) with centered surface card
+  and fade-in/zoom-in animation.
+* **Navigation**: Sticky top header with hamburger menu opening a sidebar overlay.
+  Active tab highlighted with primary color.
+* **Responsive**: Mobile-first. Cards stack vertically, grids collapse to single columns,
+  sidebars become overlays. Safe-area bottom padding on sticky footers for mobile
+  browsers.
 
-The application will use a responsive, card-based layout that adapts seamlessly from
-desktop to mobile devices.
-●​ Main Container: A fixed-width main container will be centered on large screens, with
-vertical padding to create breathing room. On mobile, it will expand to fill the screen
-width.
+### 15.4 Component Design
 
-●​ Navigation: A persistent sidebar (on desktop) or a hamburger menu (on mobile) will
-provide access to the Home, Purchases, Dashboard, and Settings. The User
-Management link will appear here only for administrators.
-●​ Card-Based UI: Purchases , and dashboard widgets will be presented in cards. This
-modular approach keeps information organized and visually separated. Each card
-will have consistent padding, a subtle border, and a light box-shadow to lift it off the
-background.
-●​ Responsive Grids: A flexible grid system will be used to arrange content. For
-example, on the Dashboard, filter options might occupy a sidebar on desktop but
-collapse into an accordion or a modal on mobile.
+* **Buttons**:
+  * Primary: Solid blue background, white text, full-width on mobile.
+  * Secondary: Outline or subtle background.
+  * Destructive: Solid red background for delete/irreversible actions.
+* **Forms and Inputs**:
+  * Floating labels animate from placeholder position to top on focus/filled state.
+  * Select-or-type pattern (`CreatableSelect`, `TaxRateInput`): toggles between
+    a `<select>` and a free-text `<input>`.
+  * Validation errors: red text directly below the field.
+* **Modals**:
+  * Semi-transparent backdrop blur overlay.
+  * Used for confirmations (delete), multi-field forms (create project, add payment),
+    and detail views (image viewer, audit logs).
+  * Always contain clear "Confirm" and "Cancel" actions.
+* **Notifications**:
+  * Inline success/error banners with colored backgrounds and icons, placed within
+    the relevant page section.
+* **Loading States**:
+  * Skeleton placeholders (`animate-pulse`) for card grids.
+  * `Loader2` spinning icon inside buttons during async operations.
+* **Empty States**:
+  * Dashed border cards with centered icon, message, and CTA button.
+* **Tabs**:
+  * Pill-style segmented controls with `bg-surface p-1` container and `bg-primary
+    text-white` for active tab.
 
+---
 
-## 15.4 Component Design
+## Appendix A: API Endpoint Reference
 
-A consistent set of UI components will be used throughout the application.
-●​ Buttons:
-○​ Primary: Solid background (Deep Blue) with white text for the main
-call-to-action on a page (e.g., "Confirm purchase" ).
-○​ Secondary: Outline-style (Deep Blue border, transparent background) for
-less critical actions (e.g., "Add manually" ).
-○​ Destructive: Solid background (Alert Red) for actions like "Delete account".
-●​ Forms and Inputs:
-○​ Input fields will have a light gray background, clear labels positioned above
-the field, and a blue border on focus.
-○​ Validation errors will be displayed in red text directly below the respective
-field.
-●​ Modals (Pop-ups):
-○​ A semi-transparent overlay will cover the background page to focus the user's
-attention. Modals will be used for confirmations, such as deleting a purchase.
-They will always contain clear "Confirm" and "Cancel" actions.
-●​ Notifications:
-○​ Toast notifications will slide in from a corner of the screen for non-blocking
-feedback, such as "We have sent instructions to your email" or "Purchase
-was saved". They will be color-coded (Green for success, Red for error).
+All endpoints are mounted under `/api`.
 
+### Auth (`/api/auth`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/auth/token` | No | Login, returns JWT |
+| GET | `/auth/me` | Yes | Current user profile |
+| GET | `/auth/users` | Admin | List all users |
+| POST | `/auth/users` | Admin | Create user |
+| PATCH | `/auth/users/{id}/role` | Admin | Toggle admin rights |
+| DELETE | `/auth/users/{id}` | Admin | Delete/anonymize user |
+| POST | `/auth/users/cleanup` | Admin | Remove unreferenced users |
+| POST | `/auth/users/{id}/password-override` | Admin | Set user's password |
+| POST | `/auth/change-password` | Yes | Change own password |
+| POST | `/auth/update-name` | Yes | Change own username |
+| POST | `/auth/tax-settings` | Yes | Update tax preferences |
+
+### Purchases (`/api/purchases`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/purchases` | Yes | List purchases (search, sort, filter) |
+| POST | `/purchases` | Yes | Create purchase (multipart: JSON + images) |
+| GET | `/purchases/recent` | Yes | Recent purchases |
+| GET | `/purchases/summary` | Yes | Current month personal spending |
+| GET | `/purchases/stats/analytics` | Yes | Full analytics data |
+| GET | `/purchases/admin/all` | Admin | All purchases |
+| GET | `/purchases/{id}` | Yes | Single purchase |
+| PUT | `/purchases/{id}` | Yes | Update purchase |
+| DELETE | `/purchases/{id}` | Yes | Delete purchase |
+| GET | `/purchases/{id}/logs` | Yes | Purchase audit logs |
+| POST | `/purchases/{id}/logs` | Yes | Add log entry |
+| GET | `/purchases/users/all` | Yes | All users (for dropdowns) |
+
+### Projects (`/api/projects`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/projects` | Yes | User's active projects |
+| POST | `/projects` | Yes | Create project (multipart) |
+| GET | `/projects/admin/all` | Admin | All projects |
+| GET | `/projects/{id}` | Yes | Project detail + participants |
+| PUT | `/projects/{id}` | Yes | Update project |
+| DELETE | `/projects/{id}` | Admin | Delete project |
+| POST | `/projects/{id}/participants` | Yes | Add participant |
+| DELETE | `/projects/{id}/participants/{userId}` | Yes | Remove participant |
+| GET | `/projects/{id}/moneyflow` | Yes | Settlement balances |
+| GET | `/projects/{id}/stats` | Yes | Project spending stats |
+
+### Payments (`/api/payments`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/payments` | Yes | Create payment |
+| GET | `/payments` | Yes | List payments |
+| DELETE | `/payments/{id}` | Yes | Delete payment |
+| GET | `/payments/balances` | Yes | Global settlement balances |
+
+### OCR (`/api/ocr`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/ocr/upload` | Yes | Upload receipt images for AI analysis (max 5) |
+
+### Categories (`/api/categories`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/categories` | Yes | Create category (deduplicates) |
+| GET | `/categories` | Yes | All distinct category names |
+| GET | `/categories/{level}` | Yes | Categories by level for user |
+
+### Mapping (`/api/mapping`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/mapping/set` | Yes | Store original→friendly name mapping |
+| POST | `/mapping/get` | Yes | Look up friendly name |
+
+### Search (`/api/search`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/search?q=` | Yes | Full-text search across projects, purchases, items |
+
+### Analytics (`/api/analytics`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/analytics/filters` | Yes | User's saved filters |
+| POST | `/analytics/filters` | Yes | Create saved filter |
+| DELETE | `/analytics/filters/{id}` | Yes | Delete saved filter |
