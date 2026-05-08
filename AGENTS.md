@@ -49,7 +49,9 @@ MoneyFlow/
     tailwind.config.js  # Custom theme (dark: #0B0E14 bg, #151921 surface, Poppins font)
 ```
 
-## Deploy to dev server
+## Deploy to dev server (192.168.1.109)
+
+### Full deploy via git push
 ```bash
 ssh root@192.168.1.109
 cd /root/MoneyFlow
@@ -57,32 +59,48 @@ git pull origin main
 docker compose -f docker-compose.dev.yml down
 docker compose -f docker-compose.dev.yml up -d --build
 ```
+
+### Quick deploy (testing without git push)
+Copy only changed files via SCP, then rebuild the affected container:
+```bash
+# From local machine
+scp frontend/src/pages/SomeFile.jsx root@192.168.1.109:/root/MoneyFlow/frontend/src/pages/SomeFile.jsx
+# Rebuild only frontend (fastest) or backend
+ssh root@192.168.1.109 "docker compose -f /root/MoneyFlow/docker-compose.dev.yml up -d --build frontend"
+# Or rebuild all
+ssh root@192.168.1.109 "docker compose -f /root/MoneyFlow/docker-compose.dev.yml up -d --build"
+```
+
 The dev server is at http://192.168.1.109:5173. Admin creds: `admin` / `adminpassword`.
 
 ## Testing
 
 ### Backend unit tests
+Run inside the backend container with `/app` as working directory:
 ```bash
-docker exec moneyflow-backend python3 test_auth.py
-docker exec moneyflow-backend python3 test_db_crud.py
+docker exec -w /app moneyflow-backend-dev python3 test_auth.py
+docker exec -w /app moneyflow-backend-dev python3 test_db_crud.py
+docker exec -w /app moneyflow-backend-dev python3 test_moneyflow.py
 # etc. — standalone Python scripts in backend/
 ```
 
 ### E2E / integration tests (Playwright via pip)
 ```bash
-# Install once
+# Install once (on the machine where you run tests)
 pip3 install --break-system-packages playwright
 python3 -m playwright install chromium
 
-# Run the full flow test
-cd /tmp && python3 mf_final_test.py
+# Run the UI smoke test (validates toggles removed, contributor chips,
+# always-visible tax/discount, delete item button, no React errors)
+cd /tmp && python3 test_purchase_ui.py
 ```
-The test script (`mf_final_test.py`) logs in as admin, creates a purchase in the House project, adds 5 items via the bottom-sheet interface, and saves — verifying the entire mobile UI flow works without React errors.
+
+The test script logs in as admin, opens the purchase editor, adds an item, opens the detail sheet, and verifies all UI elements. For a full flow test, see `mf_final_test.py` (logs in, creates a purchase, adds 5 items via bottom-sheet, saves).
 
 ### Test server credentials
-- Username: `admin`
-- Password: `adminpassword`
-- Base URL: `http://192.168.1.109:5173`
+- URL: `http://192.168.1.109:5173`
+- Login: `admin` / `adminpassword`
+- Create purchase route: `/create-purchase?project_id={id}` (not `/purchases/new`)
 
 ## Frontend commands
 ```bash

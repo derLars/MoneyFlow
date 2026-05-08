@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import BottomSheet from '../components/ui/BottomSheet';
 import CompactInput from '../components/ui/CompactInput';
 import ChipSelect from '../components/ui/ChipSelect';
@@ -14,7 +14,7 @@ const ItemDetailSheet = ({
   items,
   currentIndex,
   onUpdateItem,
-  purchase,
+  onDeleteItem,
   allUsers,
   categoriesLevel1,
   categoriesLevel2,
@@ -74,6 +74,10 @@ const ItemDetailSheet = ({
   }
 
   const update = (field, value) => onUpdateItem(item.id, field, value);
+  const handleDelete = () => {
+    onDeleteItem(item.id);
+    onClose();
+  };
 
   const canGoPrev = index > 0;
   const canGoNext = index < items.length - 1;
@@ -159,30 +163,24 @@ const ItemDetailSheet = ({
             />
           </div>
 
-          {/* Tax & Discount (conditional) */}
-          {(purchase.tax_is_added || purchase.discount_is_applied) && (
-            <div className="grid grid-cols-2 gap-2 p-2.5 bg-background rounded-xl border border-white/5">
-              {purchase.tax_is_added && (
-                <div className="[&_select]:py-1 [&_select]:text-xs [&_div>label]:text-[10px]">
-                  <TaxRateInput
-                    label="Tax %"
-                    value={item.tax_rate}
-                    onChange={(val) => update('tax_rate', val)}
-                    commonRates={(user?.common_tax_rates || '0,20').split(',')}
-                  />
-                </div>
-              )}
-              {purchase.discount_is_applied && (
-                <CompactInput
-                  label="Discount"
-                  type="number"
-                  step="0.01"
-                  value={item.discount}
-                  onChange={(e) => update('discount', e.target.value)}
-                />
-              )}
+          {/* Tax & Discount */}
+          <div className="grid grid-cols-2 gap-2 p-2.5 bg-background rounded-xl border border-white/5">
+            <div className="[&_select]:py-1 [&_select]:text-xs [&_div>label]:text-[10px]">
+              <TaxRateInput
+                label="Tax %"
+                value={item.tax_rate}
+                onChange={(val) => update('tax_rate', val)}
+                commonRates={(user?.common_tax_rates || '0,20').split(',')}
+              />
             </div>
-          )}
+            <CompactInput
+              label="Discount"
+              type="number"
+              step="0.01"
+              value={item.discount}
+              onChange={(e) => update('discount', e.target.value)}
+            />
+          </div>
 
           {/* Contributors */}
           <div className="p-2.5 bg-background rounded-xl border border-white/5">
@@ -229,6 +227,15 @@ const ItemDetailSheet = ({
               />
             )}
           </div>
+
+          {/* Delete Item */}
+          <button
+            onClick={handleDelete}
+            className="w-full py-2.5 bg-error/10 text-error font-semibold rounded-xl border border-error/20 hover:bg-error/20 transition flex items-center justify-center gap-1.5 text-xs"
+          >
+            <Trash2 size={14} />
+            Delete Item
+          </button>
         </div>
       </div>
     </BottomSheet>

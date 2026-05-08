@@ -26,7 +26,7 @@ import CompactCard from '../components/ui/CompactCard';
 import ItemDetailSheet from './ItemDetailSheet';
 
 const SortableRow = ({
-  item, purchase, allUsers, index, onEdit, isReorderMode
+  item, allUsers, index, onEdit, isReorderMode
 }) => {
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging
@@ -61,10 +61,20 @@ const SortableRow = ({
           <div className="text-sm font-medium text-white truncate leading-tight">
             {item.friendly_name || <span className="text-tertiary italic">Unnamed item</span>}
           </div>
-          <div className="text-[10px] text-secondary mt-0.5">
+          <div className="text-[10px] text-secondary mt-0.5 truncate">
             {item.quantity} × €{parseFloat(item.price || 0).toFixed(2)}
-            {(item.contributors?.length > 0 && item.contributors.length < allUsers.length) && (
-              <span className="ml-2 text-primary/60">{item.contributors.length}p</span>
+            {item.contributors?.length > 0 && (
+              <>
+                <span className="mx-1 text-tertiary">·</span>
+                {item.contributors.map((userId, i) => {
+                  const u = allUsers.find(u => u.user_id === userId);
+                  return u ? (
+                    <span key={userId} className="text-[8px] px-1 py-0.5 bg-primary/10 text-primary/80 rounded-full">
+                      {u.name}
+                    </span>
+                  ) : null;
+                })}
+              </>
             )}
           </div>
         </div>
@@ -92,8 +102,8 @@ const PurchaseEditor = () => {
     purchase_date: new Date().toISOString().split('T')[0],
     payer_user_id: user?.user_id || '',
     project_id: null,
-    tax_is_added: false,
-    discount_is_applied: false,
+    tax_is_added: true,
+    discount_is_applied: true,
   });
 
   const [globalContributors, setGlobalContributors] = useState(user?.user_id ? [user.user_id] : []);
@@ -175,12 +185,10 @@ const PurchaseEditor = () => {
       }));
       setItems(mappedItems);
       if (images) setReceiptImages(images);
-      const hasDiscount = mappedItems.some(i => (i.discount || 0) > 0);
       setPurchase(p => ({
         ...p,
         payer_user_id: user.user_id,
         purchase_name: `Scan ${new Date().toLocaleDateString()}`,
-        discount_is_applied: hasDiscount,
         project_id: project_id ? parseInt(project_id) : (projectId ? parseInt(projectId) : null)
       }));
     } else if (items.length === 0) {
@@ -480,31 +488,7 @@ const PurchaseEditor = () => {
             </div>
           </div>
 
-          <label className="flex items-center gap-1.5 px-2 py-1 bg-background rounded-lg border border-white/10 cursor-pointer text-white/80 text-xs">
-            <input
-              type="checkbox"
-              checked={purchase.tax_is_added}
-              onChange={(e) => setPurchase({...purchase, tax_is_added: e.target.checked})}
-              className="sr-only"
-            />
-            <div className={`w-7 h-3.5 rounded-full transition-colors ${purchase.tax_is_added ? 'bg-primary' : 'bg-white/10'}`}>
-              <div className={`w-2.5 h-2.5 bg-white rounded-full transition-transform mt-0.5 ${purchase.tax_is_added ? 'translate-x-4' : 'translate-x-0.5'}`} />
-            </div>
-            <span>Tax</span>
-          </label>
 
-          <label className="flex items-center gap-1.5 px-2 py-1 bg-background rounded-lg border border-white/10 cursor-pointer text-white/80 text-xs">
-            <input
-              type="checkbox"
-              checked={purchase.discount_is_applied}
-              onChange={(e) => setPurchase({...purchase, discount_is_applied: e.target.checked})}
-              className="sr-only"
-            />
-            <div className={`w-7 h-3.5 rounded-full transition-colors ${purchase.discount_is_applied ? 'bg-primary' : 'bg-white/10'}`}>
-              <div className={`w-2.5 h-2.5 bg-white rounded-full transition-transform mt-0.5 ${purchase.discount_is_applied ? 'translate-x-4' : 'translate-x-0.5'}`} />
-            </div>
-            <span>Disc.</span>
-          </label>
         </div>
 
         {/* Default split */}
@@ -584,7 +568,6 @@ const PurchaseEditor = () => {
                 <SortableRow
                   key={item.id}
                   item={item}
-                  purchase={purchase}
                   allUsers={allUsers}
                   index={index}
                   onEdit={openDetailSheet}
@@ -707,7 +690,7 @@ const PurchaseEditor = () => {
         items={items}
         currentIndex={detailSheetIndex}
         onUpdateItem={updateItem}
-        purchase={purchase}
+        onDeleteItem={deleteItem}
         allUsers={allUsers}
         categoriesLevel1={categoriesLevel1}
         categoriesLevel2={categoriesLevel2}
