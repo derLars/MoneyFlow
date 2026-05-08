@@ -49,10 +49,40 @@ MoneyFlow/
     tailwind.config.js  # Custom theme (dark: #0B0E14 bg, #151921 surface, Poppins font)
 ```
 
+## Deploy to dev server
+```bash
+ssh root@192.168.1.109
+cd /root/MoneyFlow
+git pull origin main
+docker compose -f docker-compose.dev.yml down
+docker compose -f docker-compose.dev.yml up -d --build
+```
+The dev server is at http://192.168.1.109:5173. Admin creds: `admin` / `adminpassword`.
+
 ## Testing
-- Backend tests are standalone Python scripts in `backend/` (test_auth.py, test_db_crud.py, etc.)
-- Test fixtures (receipt images) in `tests/fixtures/`
-- No test runner configured — run scripts directly: `docker exec moneyflow-backend python3 test_auth.py`
+
+### Backend unit tests
+```bash
+docker exec moneyflow-backend python3 test_auth.py
+docker exec moneyflow-backend python3 test_db_crud.py
+# etc. — standalone Python scripts in backend/
+```
+
+### E2E / integration tests (Playwright via pip)
+```bash
+# Install once
+pip3 install --break-system-packages playwright
+python3 -m playwright install chromium
+
+# Run the full flow test
+cd /tmp && python3 mf_final_test.py
+```
+The test script (`mf_final_test.py`) logs in as admin, creates a purchase in the House project, adds 5 items via the bottom-sheet interface, and saves — verifying the entire mobile UI flow works without React errors.
+
+### Test server credentials
+- Username: `admin`
+- Password: `adminpassword`
+- Base URL: `http://192.168.1.109:5173`
 
 ## Frontend commands
 ```bash
@@ -69,6 +99,8 @@ npm run build     # Vite production build
 - **VITE_API_URL** must be set to the API base URL (no `/api` suffix needed — axios adds it)
 - **Soft participant removal**: `is_active = False` instead of delete; shown as "(removed)" in UI
 - **Projects auto-delete** when last active participant leaves
+- **React hooks order**: Never put a conditional early return (`if (!x) return null`) before `useCallback`/`useEffect`/custom hooks. All hooks must be called unconditionally. Move the check inside the JSX or wrap it in a `BottomSheet`/placeholder instead.
+- **Dev mode hooks error**: The `create-purchase` page may crash with "Rendered more hooks than during the previous render" if an early return skips hooks. See `ItemDetailSheet.jsx` for the correct pattern (all hooks before `if (!item)`).
 
 ## UI component library (`components/ui/`)
 | Component | Usage |
