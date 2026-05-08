@@ -32,11 +32,6 @@ const ItemDetailSheet = ({
     setIndex(currentIndex);
   }, [currentIndex, isOpen]);
 
-  const item = items[index];
-  if (!item) return null;
-
-  const update = (field, value) => onUpdateItem(item.id, field, value);
-
   const handleTouchStart = useCallback((e) => {
     const target = e.target;
     const isInput = target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.closest('input, select, textarea');
@@ -68,6 +63,17 @@ const ItemDetailSheet = ({
     touchStartX.current = null;
     touchStartY.current = null;
   }, [swiping, swipeOffset, index, items.length]);
+
+  const item = items[index];
+  if (!item) {
+    return (
+      <BottomSheet isOpen={isOpen} onClose={onClose}>
+        <div className="p-4 text-center text-secondary text-sm">No item selected</div>
+      </BottomSheet>
+    );
+  }
+
+  const update = (field, value) => onUpdateItem(item.id, field, value);
 
   const canGoPrev = index > 0;
   const canGoNext = index < items.length - 1;
